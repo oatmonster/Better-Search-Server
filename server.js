@@ -113,7 +113,7 @@ app.get( '/item/:id', ( req, res ) => {
 
 app.get( '/categories', ( req, res ) => {
   res.json( {
-    ack: 'success',
+    ack: 'Success',
     categories: categoriesArray
   } );
 } );
