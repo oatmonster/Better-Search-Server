@@ -9,6 +9,7 @@ const lineReader = require( 'readline' ).createInterface( {
 } );
 
 var categoriesArray = []
+var categoriesMap = new Map();
 
 lineReader.on( 'line', function ( line ) {
   const [ id, ...others ] = line.split( ' ' );
@@ -19,9 +20,8 @@ lineReader.on( 'line', function ( line ) {
     id: id,
     name: category
   } );
+  categoriesMap.set( +id, category );
 } );
-
-var categoriesMap = new Map( categoriesArray );
 
 var app = express();
 app.use( cors() );
@@ -66,6 +66,9 @@ app.get( '/search', ( req, res ) => {
   if ( req.query.category != undefined && categoriesMap.has( +req.query.category ) ) {
     searchUrl += '&categoryId=' + req.query.category;
   }
+  else {
+    console.log( categoriesMap )
+  }
 
   // ====================================================================================
   // Filtering -- Listing Type
@@ -88,13 +91,11 @@ app.get( '/search', ( req, res ) => {
       searchUrl += `&itemFilter(${filterIndex}).value(1)=Auction`;
       filterIndex++;
     }
-
-
-
   }
 
+  console.log( searchUrl );
+
   api_helper.make_API_call( searchUrl ).then( response => {
-    console.log( response );
     res.json( response.findItemsAdvancedResponse[ 0 ] );
   } ).catch( error => {
     res.send( error );
