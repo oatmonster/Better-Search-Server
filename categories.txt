@@ -1,0 +1,34 @@
+20081 Antiques
+550 Art
+2984 Baby
+267 Books
+12576 Business & Industrial
+625 Cameras & Photo
+15032 Cell Phones & Accessories
+11450 Clothing, Shoes & Accessories
+11116 Coins & Paper Money
+1 Collectibles
+58058 Computers/Tablets & Networking
+293 Consumer Electronics
+14339 Crafts
+237 Dolls & Bears
+11232 DVDs & Movies
+45100 Entertainment Memorabilia
+172008 Gift Cards & Coupons
+26395 Health & Beauty
+11700 Home & Garden
+281 Jewelry & Watches
+11233 Music
+619 Musical Instruments & Gear
+1281 Pet Supplies
+870 Pottery & Glass
+10542 Real Estate
+316 Specialty Services
+888 Sporting Goods
+64482 Sports Mem, Cards & Fan Shop
+260 Stamps
+1305 Tickets & Experiences
+220 Toys & Hobbies
+3252 Travel
+1249 Video Games & Consoles
+99 Everything Else
