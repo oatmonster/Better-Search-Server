@@ -1,10 +1,27 @@
 const express = require( 'express' );
 const api_helper = require( './API_helper' );
 const cors = require( 'cors' );
-
-var fs = require( 'fs' );
-
+const fs = require( 'fs' );
 const appId = fs.readFileSync( './APP_ID', 'utf8' );
+
+const lineReader = require( 'readline' ).createInterface( {
+  input: fs.createReadStream( 'categories.txt' )
+} );
+
+var categoriesArray = []
+
+lineReader.on( 'line', function ( line ) {
+  const [ id, ...others ] = line.split( ' ' );
+  category = '';
+  for ( var i = 0; i < others.length - 1; i++ ) category += others[ i ] + ' ';
+  category += others[ others.length - 1 ];
+  categoriesArray.push( {
+    id: id,
+    name: category
+  } );
+} );
+
+var categoriesMap = new Map( categoriesArray );
 
 var app = express();
 app.use( cors() );
@@ -43,6 +60,14 @@ app.get( '/search', ( req, res ) => {
   }
 
   // ====================================================================================
+  // Category
+  // ====================================================================================
+
+  if ( req.query.category != undefined && categoriesMap.has( +req.query.category ) ) {
+    searchUrl += '&categoryId=' + req.query.category;
+  }
+
+  // ====================================================================================
   // Filtering -- Listing Type
   // ====================================================================================
 
@@ -63,8 +88,10 @@ app.get( '/search', ( req, res ) => {
       searchUrl += `&itemFilter(${filterIndex}).value(1)=Auction`;
       filterIndex++;
     }
-  }
 
+
+
+  }
 
   api_helper.make_API_call( searchUrl ).then( response => {
     console.log( response );
@@ -81,6 +108,13 @@ app.get( '/item/:id', ( req, res ) => {
     res.json( response.Item );
   } ).catch( error => {
     res.send( error );
+  } );
+} );
+
+app.get( '/categories', ( req, res ) => {
+  res.json( {
+    ack: 'success',
+    categories: categoriesArray
   } );
 } );
 
