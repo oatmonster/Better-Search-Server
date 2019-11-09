@@ -1,27 +1,12 @@
 const express = require( 'express' );
-const api_helper = require( './API_helper' );
 const cors = require( 'cors' );
 const fs = require( 'fs' );
-const appId = fs.readFileSync( './APP_ID', 'utf8' );
+const request = require( 'request-promise-native' );
+const parseString = require( 'xml2js' ).parseString;
 
-const lineReader = require( 'readline' ).createInterface( {
-  input: fs.createReadStream( 'categories.txt' )
-} );
-
-var categoriesArray = []
-var categoriesMap = new Map();
-
-lineReader.on( 'line', function ( line ) {
-  const [ id, ...others ] = line.split( ' ' );
-  category = '';
-  for ( var i = 0; i < others.length - 1; i++ ) category += others[ i ] + ' ';
-  category += others[ others.length - 1 ];
-  categoriesArray.push( {
-    id: id,
-    name: category
-  } );
-  categoriesMap.set( +id, category );
-} );
+const auth = JSON.parse( fs.readFileSync( 'auth.json' ) );
+const appId = auth.AppID;
+const authNAuth = auth.AuthNAuth;
 
 var app = express();
 app.use( cors() );
@@ -35,8 +20,14 @@ app.get( '/search', ( req, res ) => {
 
   var searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD=true'
   searchUrl += '&SECURITY-APPNAME=' + appId;
-  searchUrl += '&keywords=' + req.query.query;
   searchUrl += '&paginationInput.entriesPerPage=20';
+
+  // ====================================================================================
+  // Pagination
+  // ====================================================================================
+  if ( req.query.query != undefined ) {
+    searchUrl += '&keywords=' + req.query.query;
+  }
 
   // ====================================================================================
   // Pagination
@@ -63,11 +54,8 @@ app.get( '/search', ( req, res ) => {
   // Category
   // ====================================================================================
 
-  if ( req.query.category != undefined && categoriesMap.has( +req.query.category ) ) {
+  if ( req.query.category != undefined ) {
     searchUrl += '&categoryId=' + req.query.category;
-  }
-  else {
-    console.log( categoriesMap )
   }
 
   // ====================================================================================
@@ -93,9 +81,16 @@ app.get( '/search', ( req, res ) => {
     }
   }
 
-  console.log( searchUrl );
+  // ====================================================================================
+  // Filtering -- Condition
+  // ====================================================================================
 
-  api_helper.make_API_call( searchUrl ).then( response => {
+  if ( req.query.condition != undefined ) {
+    searchUrl += `&itemFilter(${filterIndex}).name=Condition`
+    searchUrl += `&itemFilter(${filterIndex}).value(0)=${req.query.condition}`
+  }
+
+  request( searchUrl, { json: true } ).then( response => {
     res.json( response.findItemsAdvancedResponse[ 0 ] );
   } ).catch( error => {
     res.send( error );
@@ -105,17 +100,113 @@ app.get( '/search', ( req, res ) => {
 app.get( '/item/:id', ( req, res ) => {
   var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem&responseencoding=JSON&appid=' + appId + '&siteid=0&version=967&ItemID=' + req.params.id;
 
-  api_helper.make_API_call( url ).then( response => {
+  request( url, { json: true } ).then( response => {
     res.json( response.Item );
   } ).catch( error => {
     res.send( error );
   } );
 } );
 
-app.get( '/categories', ( req, res ) => {
-  res.json( {
-    ack: 'Success',
-    categories: categoriesArray
+app.get( '/category', ( req, res ) => {
+  var options = {
+    method: 'POST',
+    url: 'https://api.ebay.com/ws/api.dll',
+    headers: {
+      'Content-Type': 'text/xml',
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+      'X-EBAY-API-CALL-NAME': 'GetCategories',
+    },
+    body: `
+    <?xml version="1.0" encoding="utf-8"?>
+    <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+      <RequesterCredentials>
+        <eBayAuthToken>${authNAuth}</eBayAuthToken>
+      </RequesterCredentials>
+      <ErrorLanguage>en_US</ErrorLanguage>
+      <WarningLevel>High</WarningLevel>
+      <CategorySiteID>0</CategorySiteID>
+      <DetailLevel>ReturnAll</DetailLevel>
+      <LevelLimit>1</LevelLimit>
+    </GetCategoriesRequest>
+    `,
+  }
+  request( options ).then( response => {
+    parseString( response, ( err, result ) => {
+      delete result.GetCategoriesResponse[ '$' ];
+      res.json( result.GetCategoriesResponse );
+    } );
+  } ).catch( err => {
+    console.error( err );
+  } );
+} );
+
+app.get( '/category/:categoryID', ( req, res ) => {
+  var options = {
+    method: 'POST',
+    url: 'https://api.ebay.com/ws/api.dll',
+    headers: {
+      'Content-Type': 'text/xml',
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+      'X-EBAY-API-CALL-NAME': 'GetCategories',
+    },
+    body: `
+    <?xml version="1.0" encoding="utf-8"?>
+    <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+      <RequesterCredentials>
+        <eBayAuthToken>${authNAuth}</eBayAuthToken>
+      </RequesterCredentials>
+      <CategoryParent>${req.params.categoryID}</CategoryParent>
+      <ErrorLanguage>en_US</ErrorLanguage>
+      <WarningLevel>High</WarningLevel>
+      <CategorySiteID>0</CategorySiteID>
+      <DetailLevel>ReturnAll</DetailLevel>
+      <LevelLimit>1</LevelLimit>
+    </GetCategoriesRequest>
+    `,
+  }
+  request( options ).then( response => {
+    parseString( response, ( err, result ) => {
+      delete result.GetCategoriesResponse[ '$' ];
+      res.json( result.GetCategoriesResponse );
+    } );
+  } ).catch( err => {
+    console.error( err );
+  } );
+} );
+
+app.get( '/category/:categoryID/condition/', ( req, res ) => {
+  var options = {
+    method: 'POST',
+    url: 'https://api.ebay.com/ws/api.dll',
+    headers: {
+      'Content-Type': 'text/xml',
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+      'X-EBAY-API-CALL-NAME': 'GetCategoryFeatures',
+    },
+    body: `
+    <?xml version="1.0" encoding="utf-8"?>
+    <GetCategoryFeaturesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+      <RequesterCredentials>
+        <eBayAuthToken>${authNAuth}</eBayAuthToken>
+      </RequesterCredentials>
+      <DetailLevel>ReturnAll</DetailLevel>
+      <LevelLimit>1</LevelLimit>
+      <ViewAllNodes>true</ViewAllNodes>
+      <CategoryID>${req.params.categoryID}</CategoryID>
+      <FeatureID>ConditionValues</FeatureID>
+    </GetCategoryFeaturesRequest>
+    `,
+  }
+  request( options ).then( response => {
+    parseString( response, ( err, result ) => {
+      delete result.GetCategoryFeaturesResponse[ '$' ];
+      res.json( result.GetCategoryFeaturesResponse );
+    } );
+  } ).catch( err => {
+    console.error( err );
   } );
 } );
 
