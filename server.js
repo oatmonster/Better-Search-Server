@@ -98,7 +98,24 @@ app.get( '/search', ( req, res ) => {
 } );
 
 app.get( '/item/:id', ( req, res ) => {
-  var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem&responseencoding=JSON&appid=' + appId + '&siteid=0&version=967&ItemID=' + req.params.id;
+  var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
+  url += '&responseencoding=JSON&siteid=0&version=967';
+  url += '&appid=' + appId;
+  url += '&ItemID=' + req.params.id;
+
+  request( url, { json: true } ).then( response => {
+    res.json( response.Item );
+  } ).catch( error => {
+    res.send( error );
+  } );
+} );
+
+app.get( '/item/:id/description', ( req, res ) => {
+  var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
+  url += '&responseencoding=JSON&siteid=0&version=967';
+  url += '&appid=' + appId;
+  url += '&ItemID=' + req.params.id;
+  url += '&IncludeSelector=Description';
 
   request( url, { json: true } ).then( response => {
     res.json( response.Item );
