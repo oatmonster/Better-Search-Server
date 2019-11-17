@@ -22,6 +22,9 @@ app.get( '/search', ( req, res ) => {
   searchUrl += '&SECURITY-APPNAME=' + appId;
   searchUrl += '&paginationInput.entriesPerPage=20';
 
+  searchUrl += '&outputSelector(0)=PictureURLSuperSize'
+  searchUrl += '&outputSelector(1)=PictureURLLarge'
+
   // ====================================================================================
   // Pagination
   // ====================================================================================
