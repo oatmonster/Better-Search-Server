@@ -5,8 +5,8 @@ const request = require( 'request-promise-native' );
 const parseString = require( 'xml2js' ).parseString;
 
 const auth = JSON.parse( fs.readFileSync( 'auth.json' ) );
-const appId = auth.AppID;
-const authNAuth = auth.AuthNAuth;
+const appId = auth.appId;
+const authNAuth = auth.authNAuth;
 
 var app = express();
 app.use( cors() );
@@ -161,7 +161,7 @@ app.get( '/category', ( req, res ) => {
   } );
 } );
 
-app.get( '/category/:categoryID', ( req, res ) => {
+app.get( '/category/:categoryId', ( req, res ) => {
   var options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
@@ -177,7 +177,7 @@ app.get( '/category/:categoryID', ( req, res ) => {
       <RequesterCredentials>
         <eBayAuthToken>${authNAuth}</eBayAuthToken>
       </RequesterCredentials>
-      <CategoryParent>${req.params.categoryID}</CategoryParent>
+      <CategoryParent>${req.params.categoryId}</CategoryParent>
       <ErrorLanguage>en_US</ErrorLanguage>
       <WarningLevel>High</WarningLevel>
       <CategorySiteID>0</CategorySiteID>
@@ -196,7 +196,7 @@ app.get( '/category/:categoryID', ( req, res ) => {
   } );
 } );
 
-app.get( '/category/:categoryID/condition/', ( req, res ) => {
+app.get( '/category/:categoryId/condition/', ( req, res ) => {
   var options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
@@ -215,7 +215,7 @@ app.get( '/category/:categoryID/condition/', ( req, res ) => {
       <DetailLevel>ReturnAll</DetailLevel>
       <LevelLimit>1</LevelLimit>
       <ViewAllNodes>true</ViewAllNodes>
-      <CategoryID>${req.params.categoryID}</CategoryID>
+      <CategoryID>${req.params.categoryId}</CategoryID>
       <FeatureID>ConditionValues</FeatureID>
     </GetCategoryFeaturesRequest>
     `,
