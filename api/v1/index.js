@@ -1,19 +1,14 @@
 const express = require( 'express' );
-const cors = require( 'cors' );
+const router = express.Router();
 const fs = require( 'fs' );
 const request = require( 'request-promise-native' );
 const parseString = require( 'xml2js' ).parseString;
 
-const auth = JSON.parse( fs.readFileSync( 'auth.json' ) );
+const auth = JSON.parse( fs.readFileSync( './config/auth.json' ) );
 const appId = auth.appId;
 const authNAuth = auth.authNAuth;
 
-var app = express();
-app.use( cors() );
-
-app.get( '/', ( req, res ) => res.send( 'Copyright Alex Zhao 2019' ) );
-
-app.get( '/search', ( req, res ) => {
+router.get( '/search', ( req, res ) => {
   console.log( req.query );
 
   var filterIndex = 0;
@@ -21,9 +16,6 @@ app.get( '/search', ( req, res ) => {
   var searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD=true'
   searchUrl += '&SECURITY-APPNAME=' + appId;
   searchUrl += '&paginationInput.entriesPerPage=20';
-
-  searchUrl += '&outputSelector(0)=PictureURLSuperSize'
-  searchUrl += '&outputSelector(1)=PictureURLLarge'
 
   // ====================================================================================
   // Pagination
@@ -100,7 +92,7 @@ app.get( '/search', ( req, res ) => {
   } );
 } );
 
-app.get( '/item/:id', ( req, res ) => {
+router.get( '/item/:id', ( req, res ) => {
   var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=JSON&siteid=0&version=967';
   url += '&appid=' + appId;
@@ -113,7 +105,7 @@ app.get( '/item/:id', ( req, res ) => {
   } );
 } );
 
-app.get( '/item/:id/description', ( req, res ) => {
+router.get( '/item/:id/description', ( req, res ) => {
   var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=JSON&siteid=0&version=967';
   url += '&appid=' + appId;
@@ -127,7 +119,7 @@ app.get( '/item/:id/description', ( req, res ) => {
   } );
 } );
 
-app.get( '/category', ( req, res ) => {
+router.get( '/category', ( req, res ) => {
   var options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
@@ -161,7 +153,7 @@ app.get( '/category', ( req, res ) => {
   } );
 } );
 
-app.get( '/category/:categoryId', ( req, res ) => {
+router.get( '/category/:categoryID', ( req, res ) => {
   var options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
@@ -177,7 +169,7 @@ app.get( '/category/:categoryId', ( req, res ) => {
       <RequesterCredentials>
         <eBayAuthToken>${authNAuth}</eBayAuthToken>
       </RequesterCredentials>
-      <CategoryParent>${req.params.categoryId}</CategoryParent>
+      <CategoryParent>${req.params.categoryID}</CategoryParent>
       <ErrorLanguage>en_US</ErrorLanguage>
       <WarningLevel>High</WarningLevel>
       <CategorySiteID>0</CategorySiteID>
@@ -196,7 +188,7 @@ app.get( '/category/:categoryId', ( req, res ) => {
   } );
 } );
 
-app.get( '/category/:categoryId/condition/', ( req, res ) => {
+router.get( '/category/:categoryID/condition/', ( req, res ) => {
   var options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
@@ -215,7 +207,7 @@ app.get( '/category/:categoryId/condition/', ( req, res ) => {
       <DetailLevel>ReturnAll</DetailLevel>
       <LevelLimit>1</LevelLimit>
       <ViewAllNodes>true</ViewAllNodes>
-      <CategoryID>${req.params.categoryId}</CategoryID>
+      <CategoryID>${req.params.categoryID}</CategoryID>
       <FeatureID>ConditionValues</FeatureID>
     </GetCategoryFeaturesRequest>
     `,
@@ -230,4 +222,4 @@ app.get( '/category/:categoryId/condition/', ( req, res ) => {
   } );
 } );
 
-app.listen( process.env.PORT || 3000 );
+module.exports = router;
