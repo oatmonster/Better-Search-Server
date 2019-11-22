@@ -1,5 +1,8 @@
-#Auth
+# Auth
 auth.json
+
+# Dummy Data for offline development
+dummy-data
 
 # Logs
 logs

@@ -4,7 +4,7 @@ const fs = require( 'fs' );
 const request = require( 'request-promise-native' );
 const parseString = require( 'xml2js' ).parseString;
 
-const auth = JSON.parse( fs.readFileSync( './config/auth.json' ) );
+const auth = JSON.parse( fs.readFileSync( './auth.json' ) );
 const appId = auth.appId;
 const authNAuth = auth.authNAuth;
 
