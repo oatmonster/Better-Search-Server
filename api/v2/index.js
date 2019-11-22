@@ -1,13 +1,11 @@
 const express = require( 'express' );
 const router = express.Router();
-const fs = require( 'fs' );
-const request = require( 'request-promise-native' );
-const parser = require( 'xml2js' ).Parser( { 'explicitArray': false } );
 
-// const auth = JSON.parse( fs.readFileSync( 'auth.json' ) );
-// const appId = auth.appId;
-// const authNAuth = auth.authNAuth;
+const search = require( './controllers/search' );
+const items = require( './controllers/items' );
 
-const API_VERSION = '2.0.0';
+router.get( '/search', search.search );
+router.get( '/items/:id', items.getItem );
+router.get( '/items/:id/description', items.getItemDescription );
 
 module.exports = router;
