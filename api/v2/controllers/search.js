@@ -1,8 +1,11 @@
 const fs = require( 'fs' );
 const request = require( 'request-promise-native' );
 const parser = require( 'xml2js' ).Parser( { 'explicitArray': false } ).parseString;
+const moment = require( 'moment-timezone' );
+
 const auth = JSON.parse( fs.readFileSync( './auth.json' ) );
 const appId = auth.appId;
+const ipApiKey = auth.ipApiKey;
 const config = JSON.parse( fs.readFileSync( './api/v2/config/config.json' ) );
 const version = config.version;
 
@@ -87,15 +90,20 @@ module.exports.search = ( req, res ) => {
       searchUrl += `&itemFilter(${filterIndex}).value(0)=${req.query.condition}`
     }
 
-    request( searchUrl ).then( response => {
+    let zipCode = '';
+    let timeZone = '';
+
+    request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
+      searchUrl += `&buyerPostalCode=${response.geo.zipcode}`;
+      timeZone = response.timezone;
+    } ).catch( error => {
+      searchUrl += `&buyerPostalCode=98177`;
+      timeZone = 'America/Los_Angeles'
+    } ).then( () => {
+      return request( searchUrl );
+    } ).then( response => {
       parser( response, ( err, result ) => {
         result = result.findItemsAdvancedResponse;
-        delete result[ '$' ];
-        // clean = {
-        //   'ack': result.ack,
-        //   'timestamp': new Date(),
-        //   'version': version
-        // }
         if ( result.ack == 'Failure' ) {
           res.sendStatus( 400 );
         } else {
@@ -112,11 +120,13 @@ module.exports.search = ( req, res ) => {
                 item.galleryURL ||
                 'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
               'country': item.country,
-              'startTime': item.listingInfo.startTime,
-              'endTime': item.listingInfo.endTime,
+              'startTimeUtc': item.listingInfo.startTime,
+              'endTimeUtc': item.listingInfo.endTime,
+              'endTimeLocal': item.listingInfo.endTime,
+              'timeRemaining': item.sellingStatus.timeLeft,
               'listingType': item.listingInfo.listingType,
-              'bestOfferEnabled': item.listingInfo.bestOfferEnabled === "true",
-              'buyItNowEnabled': item.listingInfo.buyItNowAvailable === "true",
+              'bestOfferEnabled': item.listingInfo.bestOfferEnabled === 'true',
+              'buyItNowEnabled': item.listingInfo.buyItNowAvailable === 'true',
               'currentPrice': {
                 'price': +item.sellingStatus.currentPrice[ '_' ],
                 'currencyId': item.sellingStatus.currentPrice[ '$' ].currencyId
@@ -144,6 +154,8 @@ module.exports.search = ( req, res ) => {
               cleanItem.bidCount = +item.sellingStatus.bidCount;
             }
 
+            cleanItem.endTimeLocal = moment( cleanItem.endTimeUtc ).tz( timeZone ).format();
+
             return cleanItem;
           } );
 
@@ -162,7 +174,7 @@ module.exports.search = ( req, res ) => {
       } );
     } );
   } catch ( error ) {
-    console.log( error );
+    console.error( error );
     res.sendStatus( 500 );
   }
 }

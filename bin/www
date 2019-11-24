@@ -5,6 +5,7 @@ var http = require( 'http' );
 // Get port from environment and store in Express.
 var port = normalizePort( process.env.PORT || '3000' );
 app.set( 'port', port );
+app.set( 'trust proxy', true );
 
 // Create Http server.
 var server = http.createServer( app );
