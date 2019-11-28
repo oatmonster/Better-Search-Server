@@ -141,7 +141,9 @@ module.exports.search = ( req, res ) => {
               'sellingState': item.sellingStatus.sellingState,
               'watchCount': +item.listingInfo.watchCount,
               'shippingInfo': {
-                'shippingType': item.shippingInfo.shippingType
+                'type': item.shippingInfo.shippingType,
+                'cost': +item.shippingInfo.shippingServiceCost[ '_' ],
+                'currencyId': item.shippingInfo.shippingServiceCost[ '$' ].currencyId
               },
               'category': item.primaryCategory,
             }
