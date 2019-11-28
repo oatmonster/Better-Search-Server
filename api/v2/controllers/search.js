@@ -120,10 +120,13 @@ module.exports.search = ( req, res ) => {
                 item.galleryURL ||
                 'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
               'country': item.country,
-              'startTimeUtc': item.listingInfo.startTime,
-              'endTimeUtc': item.listingInfo.endTime,
-              'endTimeLocal': item.listingInfo.endTime,
-              'timeRemaining': item.sellingStatus.timeLeft,
+              'listingInfo': {
+                'startTimeUtc': item.listingInfo.startTime,
+                'endTimeUtc': item.listingInfo.endTime,
+                'endTimeLocal': item.listingInfo.endTime,
+                'timeRemaining': item.sellingStatus.timeLeft,
+                'timeTilEndDay': 0,
+              },
               'listingType': item.listingInfo.listingType,
               'bestOfferEnabled': item.listingInfo.bestOfferEnabled === 'true',
               'buyItNowEnabled': item.listingInfo.buyItNowAvailable === 'true',
@@ -154,7 +157,15 @@ module.exports.search = ( req, res ) => {
               cleanItem.bidCount = +item.sellingStatus.bidCount;
             }
 
-            cleanItem.endTimeLocal = moment( cleanItem.endTimeUtc ).tz( timeZone ).format();
+            cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
+
+            timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
+
+            if ( timeTilEndDay.asMilliseconds() < 1 ) {
+              cleanItem.listingInfo.timeTilEndDay = 'PT0S';
+            } else {
+              cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
+            }
 
             return cleanItem;
           } );
@@ -172,6 +183,8 @@ module.exports.search = ( req, res ) => {
           res.status( 200 ).json( clean );
         }
       } );
+    } ).catch( error => {
+      throw new Error( 'Failed promise' );
     } );
   } catch ( error ) {
     console.error( error );
