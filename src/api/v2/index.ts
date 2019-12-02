@@ -1,16 +1,15 @@
 import express from 'express';
 import request from 'request-promise-native';
+import * as search from './controllers/search';
+import * as items from './controllers/items';
 
 const router = express.Router();
 const ipApiKey = process.env.IP_API_KEY;
 
-const search = require( './controllers/search' );
-// const items = require( './controllers/items' );
-
 router.get( '/search', search.search );
-// router.get( '/items/:id', items.getItem );
-// router.get( '/items/:id/pictures', items.getItemPictures );
-// router.get( '/items/:id/description', items.getItemDescription );
+router.get( '/items/:id', items.getItem );
+router.get( '/items/:id/pictures', items.getItemPictures );
+router.get( '/items/:id/description', items.getItemDescription );
 
 router.get( '/ip', ( req, res ) => {
   try {
