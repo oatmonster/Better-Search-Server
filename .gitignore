@@ -4,6 +4,11 @@ auth.json
 # Dummy Data for offline development
 dummy-data
 
+# compiled output
+/dist
+/tmp
+/out-tsc
+
 # Logs
 logs
 *.log

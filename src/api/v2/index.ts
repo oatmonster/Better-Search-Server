@@ -1,17 +1,16 @@
-const express = require( 'express' );
+import express from 'express';
+import request from 'request-promise-native';
+
 const router = express.Router();
-const fs = require( 'fs' );
-const request = require( 'request-promise-native' );
-const auth = JSON.parse( fs.readFileSync( './auth.json' ) );
-const ipApiKey = auth.ipApiKey;
+const ipApiKey = process.env.IP_API_KEY;
 
 const search = require( './controllers/search' );
-const items = require( './controllers/items' );
+// const items = require( './controllers/items' );
 
 router.get( '/search', search.search );
-router.get( '/items/:id', items.getItem );
-router.get( '/items/:id/pictures', items.getItemPictures );
-router.get( '/items/:id/description', items.getItemDescription );
+// router.get( '/items/:id', items.getItem );
+// router.get( '/items/:id/pictures', items.getItemPictures );
+// router.get( '/items/:id/description', items.getItemDescription );
 
 router.get( '/ip', ( req, res ) => {
   try {

@@ -1,11 +1,9 @@
-const fs = require( 'fs' );
-const request = require( 'request-promise-native' );
-const parser = require( 'xml2js' ).Parser( { 'explicitArray': false } ).parseString;
-const auth = JSON.parse( fs.readFileSync( './auth.json' ) );
-const authNAuth = auth.authNAuth;
-const appId = auth.appId;
-const config = JSON.parse( fs.readFileSync( './api/v2/config/config.json' ) );
-const version = config.version;
+import request from 'request-promise-native';
+import xml2js from 'xml2js';
+
+const parser = new xml2js.Parser( { 'explicitArray': false } ).parseString;
+const appId = process.env.APP_ID;
+const authNAuth = process.env.AUTH_N_AUTH;
 
 module.exports.getItem = ( req, res ) => {
   try {
