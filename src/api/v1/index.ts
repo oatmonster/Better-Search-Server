@@ -1,12 +1,12 @@
-const express = require( 'express' );
-const router = express.Router();
-const fs = require( 'fs' );
-const request = require( 'request-promise-native' );
-const parseString = require( 'xml2js' ).parseString;
+import express from 'express';
+import request from 'request-promise-native';
+import parseString from 'xml2js';
 
-const auth = JSON.parse( fs.readFileSync( './auth.json' ) );
-const appId = auth.appId;
-const authNAuth = auth.authNAuth;
+const appId = process.env.APP_ID;
+const authNAuth = process.env.AUTH_N_AUTH;
+
+const router = express.Router();
+const parser = parseString.parseString;
 
 router.get( '/search', ( req, res ) => {
   console.log( req.query );
@@ -144,7 +144,7 @@ router.get( '/category', ( req, res ) => {
     `,
   }
   request( options ).then( response => {
-    parseString( response, ( err, result ) => {
+    parser( response, ( err, result ) => {
       delete result.GetCategoriesResponse[ '$' ];
       res.json( result.GetCategoriesResponse );
     } );
@@ -179,7 +179,7 @@ router.get( '/category/:categoryID', ( req, res ) => {
     `,
   }
   request( options ).then( response => {
-    parseString( response, ( err, result ) => {
+    parser( response, ( err, result ) => {
       delete result.GetCategoriesResponse[ '$' ];
       res.json( result.GetCategoriesResponse );
     } );
@@ -213,7 +213,7 @@ router.get( '/category/:categoryID/condition/', ( req, res ) => {
     `,
   }
   request( options ).then( response => {
-    parseString( response, ( err, result ) => {
+    parser( response, ( err, result ) => {
       delete result.GetCategoryFeaturesResponse[ '$' ];
       res.json( result.GetCategoryFeaturesResponse );
     } );

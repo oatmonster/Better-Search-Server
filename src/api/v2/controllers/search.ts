@@ -1,13 +1,10 @@
-const fs = require( 'fs' );
-const request = require( 'request-promise-native' );
-const parser = require( 'xml2js' ).Parser( { 'explicitArray': false } ).parseString;
-const moment = require( 'moment-timezone' );
+import request from 'request-promise-native';
+import xml2js from 'xml2js';
+import moment from 'moment-timezone';
 
-const auth = JSON.parse( fs.readFileSync( './auth.json' ) );
-const appId = auth.appId;
-const ipApiKey = auth.ipApiKey;
-const config = JSON.parse( fs.readFileSync( './api/v2/config/config.json' ) );
-const version = config.version;
+const parser = new xml2js.Parser( { 'explicitArray': false } ).parseString;
+const appId = process.env.APP_ID;
+const ipApiKey = process.env.IP_API_KEY;
 
 module.exports.search = ( req, res ) => {
   try {
@@ -107,13 +104,13 @@ module.exports.search = ( req, res ) => {
         if ( result.ack == 'Failure' ) {
           res.sendStatus( 400 );
         } else {
-          let clean = {}
+          let clean: any = {}
           clean.searchResult = {
             count: 0,
             items: []
           }
           clean.searchResult.items = result.searchResult.item.map( item => {
-            cleanItem = {
+            let cleanItem: any = {
               'itemId': item.itemId,
               'title': item.title,
               'thumbnailUrl': item.pictureURLLarge ||
@@ -161,7 +158,7 @@ module.exports.search = ( req, res ) => {
 
             cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
 
-            timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
+            let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
 
             if ( timeTilEndDay.asMilliseconds() < 1 ) {
               cleanItem.listingInfo.timeTilEndDay = 'PT0S';
