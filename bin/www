@@ -1,5 +1,5 @@
 // Module dependencies. 
-var app = require( '../app' );
+var app = require( '../dist/app' );
 var http = require( 'http' );
 
 // Get port from environment and store in Express.
