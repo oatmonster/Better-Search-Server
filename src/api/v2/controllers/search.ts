@@ -1,12 +1,13 @@
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
 import moment from 'moment-timezone';
+import { IItem, ISearchResult } from '../common/interfaces';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseString;
 const appId = process.env.APP_ID;
 const ipApiKey = process.env.IP_API_KEY;
 
-module.exports.search = ( req, res ) => {
+const search = ( req, res ) => {
   try {
     console.log( req.query );
 
@@ -104,55 +105,74 @@ module.exports.search = ( req, res ) => {
         if ( result.ack == 'Failure' ) {
           res.sendStatus( 400 );
         } else {
-          let clean: any = {}
-          clean.searchResult = {
-            count: 0,
-            items: []
-          }
+          let clean: ISearchResult = {
+            searchResult: {
+              count: result.searchResult.item.length,
+              items: []
+            },
+            pagination: {
+              page: +result.paginationOutput.pageNumber,
+              totalPages: +result.paginationOutput.totalPages,
+              entriesPerPage: +result.paginationOutput.entriesPerPage,
+            },
+            searchEbayUrl: result.itemSearchURL
+          };
+
           clean.searchResult.items = result.searchResult.item.map( item => {
-            let cleanItem: any = {
-              'itemId': item.itemId,
-              'title': item.title,
-              'thumbnailUrl': item.pictureURLLarge ||
+            let cleanItem: IItem = {
+              itemId: item.itemId,
+              title: item.title,
+              thumbnailUrl: item.pictureURLLarge ||
                 item.galleryURL ||
                 'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
-              'country': item.country,
-              'listingInfo': {
-                'startTimeUtc': item.listingInfo.startTime,
-                'endTimeUtc': item.listingInfo.endTime,
-                'endTimeLocal': item.listingInfo.endTime,
-                'timeRemaining': item.sellingStatus.timeLeft,
-                'timeTilEndDay': 0,
+              country: item.country,
+              listingInfo: {
+                startTimeUtc: item.listingInfo.startTime,
+                endTimeUtc: item.listingInfo.endTime,
+                endTimeLocal: undefined,
+                timeRemaining: item.sellingStatus.timeLeft,
+                timeTilEndDay: undefined,
               },
-              'listingType': item.listingInfo.listingType,
-              'bestOfferEnabled': item.listingInfo.bestOfferEnabled === 'true',
-              'buyItNowEnabled': item.listingInfo.buyItNowAvailable === 'true',
-              'currentPrice': {
-                'price': +item.sellingStatus.currentPrice[ '_' ],
-                'currencyId': item.sellingStatus.currentPrice[ '$' ].currencyId
+              listingType: undefined,
+              bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
+              buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
+              currentPrice: {
+                price: +item.sellingStatus.currentPrice[ '_' ],
+                currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
               },
-              'currentPriceConverted': {
-                'price': +item.sellingStatus.convertedCurrentPrice[ '_' ],
-                'currencyId': item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
+              currentPriceConverted: {
+                price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
+                currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
               },
-              'sellingState': item.sellingStatus.sellingState,
-              'watchCount': +item.listingInfo.watchCount,
-              'shippingInfo': {
-                'type': item.shippingInfo.shippingType,
-                'cost': +item.shippingInfo.shippingServiceCost[ '_' ],
-                'currencyId': item.shippingInfo.shippingServiceCost[ '$' ].currencyId
+              sellingState: item.sellingStatus.sellingState,
+              watchCount: +item.listingInfo.watchCount,
+              shippingInfo: {
+                type: item.shippingInfo.shippingType,
+                cost: +item.shippingInfo.shippingServiceCost[ '_' ],
+                currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
               },
-              'category': item.primaryCategory,
-            }
+              category: item.primaryCategory,
+              itemEbayUrl: item.viewItemURL,
+            };
 
             if ( item.condition != undefined ) {
               cleanItem.condition = {
-                'conditionId': item.condition.conditionId,
-                'conditionName': item.condition.conditionDisplayName
-              }
+                conditionId: item.condition.conditionId,
+                conditionName: item.condition.conditionDisplayName
+              };
             }
 
-            if ( cleanItem.listingType === 'Auction' || cleanItem.listingType == 'AuctionWithBIN' ) {
+            if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
+              cleanItem.listingType = 'Advertisement';
+            } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
+              cleanItem.listingType = item.listingInfo.listingType;
+            } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
+              cleanItem.listingType = 'FixedPrice';
+            } else {
+              cleanItem.listingType = 'OtherType';
+            }
+
+            if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
               cleanItem.bidCount = +item.sellingStatus.bidCount;
             }
 
@@ -169,16 +189,6 @@ module.exports.search = ( req, res ) => {
             return cleanItem;
           } );
 
-          clean.searchResult.count = clean.searchResult.items.length;
-
-          clean.pagination = {
-            page: +result.paginationOutput.pageNumber,
-            totalPages: +result.paginationOutput.totalPages,
-            entriesPerPage: +result.paginationOutput.entriesPerPage,
-          }
-
-          clean.searchEbayUrl = result.itemSearchURL;
-
           res.status( 200 ).json( clean );
         }
       } );
@@ -190,3 +200,5 @@ module.exports.search = ( req, res ) => {
     res.sendStatus( 500 );
   }
 }
+
+export { search };

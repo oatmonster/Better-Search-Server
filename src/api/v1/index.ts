@@ -11,9 +11,9 @@ const parser = parseString.parseString;
 router.get( '/search', ( req, res ) => {
   console.log( req.query );
 
-  var filterIndex = 0;
+  let filterIndex = 0;
 
-  var searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD=true'
+  let searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD=true'
   searchUrl += '&SECURITY-APPNAME=' + appId;
   searchUrl += '&paginationInput.entriesPerPage=20';
 
@@ -93,7 +93,7 @@ router.get( '/search', ( req, res ) => {
 } );
 
 router.get( '/item/:id', ( req, res ) => {
-  var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
+  let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=JSON&siteid=0&version=967';
   url += '&appid=' + appId;
   url += '&ItemID=' + req.params.id;
@@ -106,7 +106,7 @@ router.get( '/item/:id', ( req, res ) => {
 } );
 
 router.get( '/item/:id/description', ( req, res ) => {
-  var url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
+  let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=JSON&siteid=0&version=967';
   url += '&appid=' + appId;
   url += '&ItemID=' + req.params.id;
@@ -120,7 +120,7 @@ router.get( '/item/:id/description', ( req, res ) => {
 } );
 
 router.get( '/category', ( req, res ) => {
-  var options = {
+  let options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
     headers: {
@@ -130,19 +130,19 @@ router.get( '/category', ( req, res ) => {
       'X-EBAY-API-CALL-NAME': 'GetCategories',
     },
     body: `
-    <?xml version="1.0" encoding="utf-8"?>
-    <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-      <RequesterCredentials>
-        <eBayAuthToken>${authNAuth}</eBayAuthToken>
-      </RequesterCredentials>
-      <ErrorLanguage>en_US</ErrorLanguage>
-      <WarningLevel>High</WarningLevel>
-      <CategorySiteID>0</CategorySiteID>
-      <DetailLevel>ReturnAll</DetailLevel>
-      <LevelLimit>1</LevelLimit>
-    </GetCategoriesRequest>
+      <?xml version="1.0" encoding="utf-8"?>
+      <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+        <RequesterCredentials>
+          <eBayAuthToken>${authNAuth}</eBayAuthToken>
+        </RequesterCredentials>
+        <ErrorLanguage>en_US</ErrorLanguage>
+        <WarningLevel>High</WarningLevel>
+        <CategorySiteID>0</CategorySiteID>
+        <DetailLevel>ReturnAll</DetailLevel>
+        <LevelLimit>1</LevelLimit>
+      </GetCategoriesRequest>
     `,
-  }
+  };
   request( options ).then( response => {
     parser( response, ( err, result ) => {
       delete result.GetCategoriesResponse[ '$' ];
@@ -154,7 +154,7 @@ router.get( '/category', ( req, res ) => {
 } );
 
 router.get( '/category/:categoryID', ( req, res ) => {
-  var options = {
+  let options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
     headers: {
@@ -164,20 +164,20 @@ router.get( '/category/:categoryID', ( req, res ) => {
       'X-EBAY-API-CALL-NAME': 'GetCategories',
     },
     body: `
-    <?xml version="1.0" encoding="utf-8"?>
-    <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-      <RequesterCredentials>
-        <eBayAuthToken>${authNAuth}</eBayAuthToken>
-      </RequesterCredentials>
-      <CategoryParent>${req.params.categoryID}</CategoryParent>
-      <ErrorLanguage>en_US</ErrorLanguage>
-      <WarningLevel>High</WarningLevel>
-      <CategorySiteID>0</CategorySiteID>
-      <DetailLevel>ReturnAll</DetailLevel>
-      <LevelLimit>1</LevelLimit>
-    </GetCategoriesRequest>
+      <?xml version="1.0" encoding="utf-8"?>
+      <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+        <RequesterCredentials>
+          <eBayAuthToken>${authNAuth}</eBayAuthToken>
+        </RequesterCredentials>
+        <CategoryParent>${req.params.categoryID}</CategoryParent>
+        <ErrorLanguage>en_US</ErrorLanguage>
+        <WarningLevel>High</WarningLevel>
+        <CategorySiteID>0</CategorySiteID>
+        <DetailLevel>ReturnAll</DetailLevel>
+        <LevelLimit>1</LevelLimit>
+      </GetCategoriesRequest>
     `,
-  }
+  };
   request( options ).then( response => {
     parser( response, ( err, result ) => {
       delete result.GetCategoriesResponse[ '$' ];
@@ -189,7 +189,7 @@ router.get( '/category/:categoryID', ( req, res ) => {
 } );
 
 router.get( '/category/:categoryID/condition/', ( req, res ) => {
-  var options = {
+  let options = {
     method: 'POST',
     url: 'https://api.ebay.com/ws/api.dll',
     headers: {
@@ -199,19 +199,19 @@ router.get( '/category/:categoryID/condition/', ( req, res ) => {
       'X-EBAY-API-CALL-NAME': 'GetCategoryFeatures',
     },
     body: `
-    <?xml version="1.0" encoding="utf-8"?>
-    <GetCategoryFeaturesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-      <RequesterCredentials>
-        <eBayAuthToken>${authNAuth}</eBayAuthToken>
-      </RequesterCredentials>
-      <DetailLevel>ReturnAll</DetailLevel>
-      <LevelLimit>1</LevelLimit>
-      <ViewAllNodes>true</ViewAllNodes>
-      <CategoryID>${req.params.categoryID}</CategoryID>
-      <FeatureID>ConditionValues</FeatureID>
-    </GetCategoryFeaturesRequest>
+      <?xml version="1.0" encoding="utf-8"?>
+      <GetCategoryFeaturesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+        <RequesterCredentials>
+          <eBayAuthToken>${authNAuth}</eBayAuthToken>
+        </RequesterCredentials>
+        <DetailLevel>ReturnAll</DetailLevel>
+        <LevelLimit>1</LevelLimit>
+        <ViewAllNodes>true</ViewAllNodes>
+        <CategoryID>${req.params.categoryID}</CategoryID>
+        <FeatureID>ConditionValues</FeatureID>
+      </GetCategoryFeaturesRequest>
     `,
-  }
+  };
   request( options ).then( response => {
     parser( response, ( err, result ) => {
       delete result.GetCategoryFeaturesResponse[ '$' ];
