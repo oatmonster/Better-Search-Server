@@ -9,7 +9,7 @@ const authNAuth = process.env.AUTH_N_AUTH;
 const ipApiKey = process.env.IP_API_KEY;
 
 const getItem = ( req, res ) => {
-  console.log( 'getItem id:', req.params.id );
+  console.log( 'REQUEST Get item id:', req.params.id );
   let countryCode = 'US';
   let zipCode = '98177';
   let timeZone = 'America/Los_Angeles';
@@ -25,19 +25,31 @@ const getItem = ( req, res ) => {
   } ).catch( error => {
   } ).then( () => {
     // Get shipping cost
-    let url: string = 'https://open.api.ebay.com/shopping?callname=GetShippingCosts&responseencoding=XML&siteid=0&version=517'
-    url += `&appid=${appId}`;
-    url += `&ItemID=${req.params.id}`;
-    url += `&DestinationCountryCode=${countryCode}`;
-    url += `&DestinationPostalCode=${zipCode}`;
-    // GetShippingCosts request will randomly fail on eBay's end
-    return request( url ).catch( error => {
-      console.error( 'Get Shipping failed once' );
-      return request( url ).catch( error => {
-        console.error( 'Get Shipping failed twice' );
-        return request( url )
-      } );
-    } );
+    let options = {
+      method: 'POST',
+      url: 'https://open.api.ebay.com/shopping',
+      headers: {
+        'Content-Type': 'text/xml',
+        'X-EBAY-API-APP-ID': appId,
+        'X-EBAY-API-SITE-ID': '0',
+        'X-EBAY-API-CALL-NAME': 'GetShippingCosts',
+        'X-EBAY-API-VERSION': '963',
+        'X-EBAY-API-REQUEST-ENCODING': 'xml',
+      },
+      body: `
+      <?xml version="1.0" encoding="utf-8"?>
+      <GetShippingCostsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+        <ErrorLanguage>en_US</ErrorLanguage>
+        <WarningLevel>High</WarningLevel>
+        <ItemID>${req.params.id}</ItemID>
+        <DestinationCountryCode>${countryCode}</DestinationCountryCode>
+        <DestinationPostalCode>${zipCode}</DestinationPostalCode>
+      </GetShippingCostsRequest>
+      `,
+    }
+
+    return request( options );
+
   } ).then( response => {
     return parser( response );
   } ).then( result => {
@@ -117,14 +129,14 @@ const getItem = ( req, res ) => {
     };
 
     // Set condition if user specified one
-    if ( result.ConditionID != undefined ) {
+    if ( result.hasOwnProperty( 'ConditionID' ) ) {
       cleanItem.condition = {
         conditionId: result.ConditionID,
         conditionName: result.ConditionDisplayName,
       };
     }
 
-    if ( result.BestOfferDetails != undefined && result.BestOfferDetails.BestOfferEnabled === 'true' ) {
+    if ( result.hasOwnProperty( 'BestOfferDetails' ) && result.BestOfferDetails.BestOfferEnabled === 'true' ) {
       cleanItem.bestOfferEnabled = true;
     }
     if ( result.ListingType === 'Chinese' && result.ListingDetails.BuyItNowAvailable === 'true' ) {
@@ -171,6 +183,7 @@ const getItem = ( req, res ) => {
 }
 
 const getItemPictures = ( req, res ) => {
+  console.log( 'REQUEST Get pictures for item id:', req.params.id );
   let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=XML&siteid=0&version=967';
   url += '&appid=' + appId;
@@ -188,6 +201,7 @@ const getItemPictures = ( req, res ) => {
 }
 
 const getItemDescription = ( req, res ) => {
+  console.log( 'REQUEST Get description for item id:', req.params.id );
   let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=XML&siteid=0&version=967';
   url += '&appid=' + appId;

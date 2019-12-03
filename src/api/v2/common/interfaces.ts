@@ -1,3 +1,14 @@
+export interface ICategory {
+  categoryId: string,
+  categoryName: string,
+  parentId?: string,
+}
+
+export interface ICondition {
+  conditionId: string,
+  conditionName: string,
+}
+
 export interface IItem {
   itemId: string,
   title: string,
