@@ -8,197 +8,193 @@ const appId = process.env.APP_ID;
 const ipApiKey = process.env.IP_API_KEY;
 
 const search = ( req, res ) => {
-  try {
-    console.log( req.query );
+  console.log( 'search query:', req.query );
 
-    let searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=XML&REST-PAYLOAD=true'
-    searchUrl += '&SECURITY-APPNAME=' + appId;
-    searchUrl += '&paginationInput.entriesPerPage=20';
-    // searchUrl += '&outputSelector(0)=PictureURLSuperSize'
-    searchUrl += '&outputSelector(0)=PictureURLLarge'
+  let searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=XML&REST-PAYLOAD=true'
+  searchUrl += '&SECURITY-APPNAME=' + appId;
+  searchUrl += '&paginationInput.entriesPerPage=20';
+  // searchUrl += '&outputSelector(0)=PictureURLSuperSize'
+  searchUrl += '&outputSelector(0)=PictureURLLarge'
 
-    let filterIndex = 0;
-    let selectorIndex = 1;
+  let filterIndex = 0;
+  let selectorIndex = 1;
 
-    // ====================================================================================
-    // Pagination
-    // ====================================================================================
-    if ( req.query.query != undefined ) {
-      searchUrl += '&keywords=' + req.query.query;
+  // ====================================================================================
+  // Pagination
+  // ====================================================================================
+  if ( req.query.query != undefined ) {
+    searchUrl += '&keywords=' + req.query.query;
+  }
+
+  // ====================================================================================
+  // Pagination
+  // ====================================================================================
+  if ( req.query.page != undefined && Number.isInteger( +req.query.page ) && +req.query.page > 1 ) {
+    searchUrl += '&paginationInput.pageNumber=' + req.query.page;
+  }
+
+  // ====================================================================================
+  // Sorting
+  // ====================================================================================
+  const validSortings = new Map( [
+    [ 1, 'EndTimeSoonest' ],
+    [ 2, 'StartTimeNewest' ],
+    [ 3, 'PricePlusShippingLowest' ],
+    [ 4, 'PricePlusShippingHighest' ]
+  ] );
+
+  if ( req.query.sortBy != undefined && validSortings.has( +req.query.sortBy ) ) {
+    searchUrl += '&sortOrder=' + validSortings.get( +req.query.sortBy );
+  }
+
+  // ====================================================================================
+  // Category
+  // ====================================================================================
+
+  if ( req.query.category != undefined ) {
+    searchUrl += '&categoryId=' + req.query.category;
+  }
+
+  // ====================================================================================
+  // Filtering -- Listing Type
+  // ====================================================================================
+
+  if ( req.query.listType != undefined ) {
+    if ( req.query.listType === '1' ) {
+      searchUrl += `&itemFilter(${filterIndex}).name=ListingType`;
+      searchUrl += `&itemFilter(${filterIndex}).value(0)=AuctionWithBIN`;
+      searchUrl += `&itemFilter(${filterIndex}).value(1)=FixedPrice`;
+      searchUrl += `&itemFilter(${filterIndex}).value(2)=StoreInventory`;
+      filterIndex++;
+    } else if ( req.query.listType === '2' ) {
+      searchUrl += `&itemFilter(${filterIndex}).name=BestOfferOnly`;
+      searchUrl += `&itemFilter(${filterIndex}).value(0)=true`;
+      filterIndex++;
+    } else if ( req.query.listType === '3' ) {
+      searchUrl += `&itemFilter(${filterIndex}).name=ListingType`;
+      searchUrl += `&itemFilter(${filterIndex}).value(0)=AuctionWithBIN`;
+      searchUrl += `&itemFilter(${filterIndex}).value(1)=Auction`;
+      filterIndex++;
     }
+  }
 
-    // ====================================================================================
-    // Pagination
-    // ====================================================================================
-    if ( req.query.page != undefined && Number.isInteger( +req.query.page ) && +req.query.page > 1 ) {
-      searchUrl += '&paginationInput.pageNumber=' + req.query.page;
-    }
+  // ====================================================================================
+  // Filtering -- Condition
+  // ====================================================================================
 
-    // ====================================================================================
-    // Sorting
-    // ====================================================================================
-    const validSortings = new Map( [
-      [ 1, 'EndTimeSoonest' ],
-      [ 2, 'StartTimeNewest' ],
-      [ 3, 'PricePlusShippingLowest' ],
-      [ 4, 'PricePlusShippingHighest' ]
-    ] );
+  if ( req.query.condition != undefined ) {
+    searchUrl += `&itemFilter(${filterIndex}).name=Condition`
+    searchUrl += `&itemFilter(${filterIndex}).value(0)=${req.query.condition}`
+  }
 
-    if ( req.query.sortBy != undefined && validSortings.has( +req.query.sortBy ) ) {
-      searchUrl += '&sortOrder=' + validSortings.get( +req.query.sortBy );
-    }
+  let zipCode = '';
+  let timeZone = '';
 
-    // ====================================================================================
-    // Category
-    // ====================================================================================
+  request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
+    searchUrl += `&buyerPostalCode=${response.geo.zipcode}`;
+    timeZone = response.timezone;
+  } ).catch( error => {
+    searchUrl += `&buyerPostalCode=98177`;
+    timeZone = 'America/Los_Angeles'
+  } ).then( () => {
+    return request( searchUrl );
+  } ).then( response => {
+    parser( response, ( err, result ) => {
+      result = result.findItemsAdvancedResponse;
+      if ( result.ack == 'Failure' ) {
+        res.sendStatus( 400 );
+      } else {
+        let clean: ISearchResult = {
+          searchResult: {
+            count: result.searchResult.item.length,
+            items: []
+          },
+          pagination: {
+            page: +result.paginationOutput.pageNumber,
+            totalPages: +result.paginationOutput.totalPages,
+            entriesPerPage: +result.paginationOutput.entriesPerPage,
+          },
+          searchEbayUrl: result.itemSearchURL
+        };
 
-    if ( req.query.category != undefined ) {
-      searchUrl += '&categoryId=' + req.query.category;
-    }
-
-    // ====================================================================================
-    // Filtering -- Listing Type
-    // ====================================================================================
-
-    if ( req.query.listType != undefined ) {
-      if ( req.query.listType === '1' ) {
-        searchUrl += `&itemFilter(${filterIndex}).name=ListingType`;
-        searchUrl += `&itemFilter(${filterIndex}).value(0)=AuctionWithBIN`;
-        searchUrl += `&itemFilter(${filterIndex}).value(1)=FixedPrice`;
-        searchUrl += `&itemFilter(${filterIndex}).value(2)=StoreInventory`;
-        filterIndex++;
-      } else if ( req.query.listType === '2' ) {
-        searchUrl += `&itemFilter(${filterIndex}).name=BestOfferOnly`;
-        searchUrl += `&itemFilter(${filterIndex}).value(0)=true`;
-        filterIndex++;
-      } else if ( req.query.listType === '3' ) {
-        searchUrl += `&itemFilter(${filterIndex}).name=ListingType`;
-        searchUrl += `&itemFilter(${filterIndex}).value(0)=AuctionWithBIN`;
-        searchUrl += `&itemFilter(${filterIndex}).value(1)=Auction`;
-        filterIndex++;
-      }
-    }
-
-    // ====================================================================================
-    // Filtering -- Condition
-    // ====================================================================================
-
-    if ( req.query.condition != undefined ) {
-      searchUrl += `&itemFilter(${filterIndex}).name=Condition`
-      searchUrl += `&itemFilter(${filterIndex}).value(0)=${req.query.condition}`
-    }
-
-    let zipCode = '';
-    let timeZone = '';
-
-    request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
-      searchUrl += `&buyerPostalCode=${response.geo.zipcode}`;
-      timeZone = response.timezone;
-    } ).catch( error => {
-      searchUrl += `&buyerPostalCode=98177`;
-      timeZone = 'America/Los_Angeles'
-    } ).then( () => {
-      return request( searchUrl );
-    } ).then( response => {
-      parser( response, ( err, result ) => {
-        result = result.findItemsAdvancedResponse;
-        if ( result.ack == 'Failure' ) {
-          res.sendStatus( 400 );
-        } else {
-          let clean: ISearchResult = {
-            searchResult: {
-              count: result.searchResult.item.length,
-              items: []
+        clean.searchResult.items = result.searchResult.item.map( item => {
+          let cleanItem: IItem = {
+            itemId: item.itemId,
+            title: item.title,
+            thumbnailUrl: item.pictureURLLarge ||
+              item.galleryURL ||
+              'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
+            country: item.country,
+            listingInfo: {
+              startTimeUtc: item.listingInfo.startTime,
+              endTimeUtc: item.listingInfo.endTime,
+              endTimeLocal: undefined,
+              timeRemaining: item.sellingStatus.timeLeft,
+              timeTilEndDay: undefined,
             },
-            pagination: {
-              page: +result.paginationOutput.pageNumber,
-              totalPages: +result.paginationOutput.totalPages,
-              entriesPerPage: +result.paginationOutput.entriesPerPage,
+            listingType: undefined,
+            bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
+            buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
+            currentPrice: {
+              price: +item.sellingStatus.currentPrice[ '_' ],
+              currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
             },
-            searchEbayUrl: result.itemSearchURL
+            currentPriceConverted: {
+              price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
+              currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
+            },
+            sellingState: item.sellingStatus.sellingState,
+            watchCount: +item.listingInfo.watchCount,
+            shippingInfo: {
+              type: item.shippingInfo.shippingType,
+              cost: +item.shippingInfo.shippingServiceCost[ '_' ],
+              currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
+            },
+            category: item.primaryCategory,
+            itemEbayUrl: item.viewItemURL,
           };
 
-          clean.searchResult.items = result.searchResult.item.map( item => {
-            let cleanItem: IItem = {
-              itemId: item.itemId,
-              title: item.title,
-              thumbnailUrl: item.pictureURLLarge ||
-                item.galleryURL ||
-                'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
-              country: item.country,
-              listingInfo: {
-                startTimeUtc: item.listingInfo.startTime,
-                endTimeUtc: item.listingInfo.endTime,
-                endTimeLocal: undefined,
-                timeRemaining: item.sellingStatus.timeLeft,
-                timeTilEndDay: undefined,
-              },
-              listingType: undefined,
-              bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
-              buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
-              currentPrice: {
-                price: +item.sellingStatus.currentPrice[ '_' ],
-                currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
-              },
-              currentPriceConverted: {
-                price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
-                currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
-              },
-              sellingState: item.sellingStatus.sellingState,
-              watchCount: +item.listingInfo.watchCount,
-              shippingInfo: {
-                type: item.shippingInfo.shippingType,
-                cost: +item.shippingInfo.shippingServiceCost[ '_' ],
-                currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
-              },
-              category: item.primaryCategory,
-              itemEbayUrl: item.viewItemURL,
+          if ( item.condition != undefined ) {
+            cleanItem.condition = {
+              conditionId: item.condition.conditionId,
+              conditionName: item.condition.conditionDisplayName
             };
+          }
 
-            if ( item.condition != undefined ) {
-              cleanItem.condition = {
-                conditionId: item.condition.conditionId,
-                conditionName: item.condition.conditionDisplayName
-              };
-            }
+          if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
+            cleanItem.listingType = 'Advertisement';
+          } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
+            cleanItem.listingType = item.listingInfo.listingType;
+          } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
+            cleanItem.listingType = 'FixedPrice';
+          } else {
+            cleanItem.listingType = 'OtherType';
+          }
 
-            if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
-              cleanItem.listingType = 'Advertisement';
-            } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
-              cleanItem.listingType = item.listingInfo.listingType;
-            } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
-              cleanItem.listingType = 'FixedPrice';
-            } else {
-              cleanItem.listingType = 'OtherType';
-            }
+          if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
+            cleanItem.bidCount = +item.sellingStatus.bidCount;
+          }
 
-            if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
-              cleanItem.bidCount = +item.sellingStatus.bidCount;
-            }
+          cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
 
-            cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
+          let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
 
-            let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
+          if ( timeTilEndDay.asMilliseconds() < 1 ) {
+            cleanItem.listingInfo.timeTilEndDay = 'PT0S';
+          } else {
+            cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
+          }
 
-            if ( timeTilEndDay.asMilliseconds() < 1 ) {
-              cleanItem.listingInfo.timeTilEndDay = 'PT0S';
-            } else {
-              cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
-            }
+          return cleanItem;
+        } );
 
-            return cleanItem;
-          } );
-
-          res.status( 200 ).json( clean );
-        }
-      } );
-    } ).catch( error => {
-      throw new Error( 'Failed promise' );
+        res.status( 200 ).json( clean );
+      }
     } );
-  } catch ( error ) {
-    console.error( error );
+  } ).catch( error => {
+    console.error( error.message );
     res.sendStatus( 500 );
-  }
+  } );
 }
 
 export { search };
