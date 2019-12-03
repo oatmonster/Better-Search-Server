@@ -30,8 +30,13 @@ const getItem = ( req, res ) => {
     url += `&ItemID=${req.params.id}`;
     url += `&DestinationCountryCode=${countryCode}`;
     url += `&DestinationPostalCode=${zipCode}`;
+    // GetShippingCosts request will randomly fail on eBay's end
     return request( url ).catch( error => {
-      return request( url ); // GetShippingCosts request will randomly fail on eBay's end
+      console.error( 'Get Shipping failed once' );
+      return request( url ).catch( error => {
+        console.error( 'Get Shipping failed twice' );
+        return request( url )
+      } );
     } );
   } ).then( response => {
     return parser( response );
@@ -96,15 +101,15 @@ const getItem = ( req, res ) => {
         timeTilEndDay: undefined,
       },
       listingType: undefined,
-      bestOfferEnabled: result.BestOfferDetails && result.BestOfferDetails.BestOfferEnabled && result.BestOfferDetails.BestOfferEnabled === 'true',
-      buyItNowEnabled: result.ListingType === 'Chinese' && result.ListingDetails.BuyItNowAvailable && result.ListingDetails.BuyItNowAvailable === 'true',
+      bestOfferEnabled: false,
+      buyItNowEnabled: false,
       currentPrice: {
         price: +result.SellingStatus.CurrentPrice[ '_' ],
-        currencyId: result.SellingStatus.CurrentPrice[ '$' ],
+        currencyId: result.SellingStatus.CurrentPrice[ '$' ].currencyID,
       },
       currentPriceConverted: {
         price: +result.SellingStatus.ConvertedCurrentPrice[ '_' ],
-        currencyId: result.SellingStatus.ConvertedCurrentPrice[ '$' ],
+        currencyId: result.SellingStatus.ConvertedCurrentPrice[ '$' ].currencyID,
       },
       sellingState: result.SellingStatus.ListingState,
       shippingInfo: shippingInfo,
@@ -117,6 +122,13 @@ const getItem = ( req, res ) => {
         conditionId: result.ConditionID,
         conditionName: result.ConditionDisplayName,
       };
+    }
+
+    if ( result.BestOfferDetails != undefined && result.BestOfferDetails.BestOfferEnabled === 'true' ) {
+      cleanItem.bestOfferEnabled = true;
+    }
+    if ( result.ListingType === 'Chinese' && result.ListingDetails.BuyItNowAvailable === 'true' ) {
+      cleanItem.buyItNowEnabled = true;
     }
 
     // Normalize listing type
