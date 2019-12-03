@@ -63,7 +63,7 @@ const getItem = ( req, res ) => {
             </RequesterCredentials>
             <ErrorLanguage>en_US</ErrorLanguage>
             <WarningLevel>High</WarningLevel>
-            <DetailLevel>ItemReturnAttributes</DetailLevel>
+            <DetailLevel>ReturnAll</DetailLevel>
             <ItemID>${req.params.id}</ItemID>
           </GetItemRequest>
         `,
@@ -108,6 +108,7 @@ const getItem = ( req, res ) => {
       },
       sellingState: result.SellingStatus.ListingState,
       shippingInfo: shippingInfo,
+      description: result.Description,
     };
 
     // Set condition if user specified one

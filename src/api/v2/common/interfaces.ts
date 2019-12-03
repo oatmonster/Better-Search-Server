@@ -38,6 +38,7 @@ export interface IItem {
     cost: number,
     currencyId: string,
   },
+  description?: string,
   itemEbayUrl?: string,
 }
 
