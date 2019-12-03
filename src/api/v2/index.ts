@@ -1,16 +1,19 @@
 import express from 'express';
 import request from 'request-promise-native';
+import * as search from './controllers/search';
+import * as items from './controllers/items';
+import * as categories from './controllers/categories';
 
 const router = express.Router();
 const ipApiKey = process.env.IP_API_KEY;
 
-const search = require( './controllers/search' );
-// const items = require( './controllers/items' );
-
 router.get( '/search', search.search );
-// router.get( '/items/:id', items.getItem );
-// router.get( '/items/:id/pictures', items.getItemPictures );
-// router.get( '/items/:id/description', items.getItemDescription );
+router.get( '/items/:id', items.getItem );
+router.get( '/items/:id/pictures', items.getItemPictures );
+router.get( '/items/:id/description', items.getItemDescription );
+router.get( '/categories', categories.getCategories );
+router.get( '/categories/:categoryId', categories.getCategory );
+router.get( '/categories/:categoryId/conditions', categories.getCategoryConditions );
 
 router.get( '/ip', ( req, res ) => {
   try {
