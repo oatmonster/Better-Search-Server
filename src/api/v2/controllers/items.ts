@@ -1,6 +1,5 @@
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
-import moment from 'moment-timezone';
 import { IItem } from '../common/interfaces';
 import * as utils from '../common/utils';
 
