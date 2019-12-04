@@ -2,6 +2,7 @@ import request from 'request-promise-native';
 import xml2js from 'xml2js';
 import moment from 'moment-timezone';
 import { IItem } from '../common/interfaces';
+import * as utils from '../common/utils';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
 const appId = process.env.APP_ID;
@@ -25,18 +26,7 @@ const getItem = ( req, res ) => {
   } ).catch( error => {
   } ).then( () => {
     // Get shipping cost
-    let options = {
-      method: 'POST',
-      url: 'https://open.api.ebay.com/shopping',
-      headers: {
-        'Content-Type': 'text/xml',
-        'X-EBAY-API-APP-ID': appId,
-        'X-EBAY-API-SITE-ID': '0',
-        'X-EBAY-API-CALL-NAME': 'GetShippingCosts',
-        'X-EBAY-API-VERSION': '963',
-        'X-EBAY-API-REQUEST-ENCODING': 'xml',
-      },
-      body: `
+    let body = `
       <?xml version="1.0" encoding="utf-8"?>
       <GetShippingCostsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
         <ErrorLanguage>en_US</ErrorLanguage>
@@ -45,7 +35,20 @@ const getItem = ( req, res ) => {
         <DestinationCountryCode>${countryCode}</DestinationCountryCode>
         <DestinationPostalCode>${zipCode}</DestinationPostalCode>
       </GetShippingCostsRequest>
-      `,
+    `;
+    let options = {
+      method: 'POST',
+      url: 'https://open.api.ebay.com/shopping',
+      headers: {
+        'Content-Type': 'text/xml',
+        'Content-Length': utils.countUtf8Bytes( body ),
+        'X-EBAY-API-APP-ID': appId,
+        'X-EBAY-API-SITE-ID': '0',
+        'X-EBAY-API-CALL-NAME': 'GetShippingCosts',
+        'X-EBAY-API-VERSION': '963',
+        'X-EBAY-API-REQUEST-ENCODING': 'xml',
+      },
+      body: body,
     }
 
     return request( options );
@@ -63,27 +66,29 @@ const getItem = ( req, res ) => {
       shippingInfo.type = 'Free';
     }
   } ).then( () => {
+    let body = `
+      <?xml version="1.0" encoding="utf-8"?>
+      <GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+        <RequesterCredentials>
+          <eBayAuthToken>${authNAuth}</eBayAuthToken>
+        </RequesterCredentials>
+        <ErrorLanguage>en_US</ErrorLanguage>
+        <WarningLevel>High</WarningLevel>
+        <DetailLevel>ReturnAll</DetailLevel>
+        <ItemID>${req.params.id}</ItemID>
+      </GetItemRequest>
+    `;
     let options = {
       method: 'POST',
       url: 'https://api.ebay.com/ws/api.dll',
       headers: {
         'Content-Type': 'text/xml',
+        'Content-Length': utils.countUtf8Bytes( body ),
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'GetItem',
       },
-      body: `
-          <?xml version="1.0" encoding="utf-8"?>
-          <GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-            <RequesterCredentials>
-              <eBayAuthToken>${authNAuth}</eBayAuthToken>
-            </RequesterCredentials>
-            <ErrorLanguage>en_US</ErrorLanguage>
-            <WarningLevel>High</WarningLevel>
-            <DetailLevel>ReturnAll</DetailLevel>
-            <ItemID>${req.params.id}</ItemID>
-          </GetItemRequest>
-        `,
+      body: body,
     };
     return request( options )
   } ).then( response => {

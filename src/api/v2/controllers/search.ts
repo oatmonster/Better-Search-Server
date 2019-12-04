@@ -188,7 +188,6 @@ const search = ( req, res ) => {
         return cleanItem;
       } );
 
-
       res.status( 200 ).json( clean );
     }
   } ).catch( error => {
