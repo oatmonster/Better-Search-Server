@@ -1,7 +1,6 @@
 import express from 'express';
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
-import moment from 'moment-timezone';
 import * as search from './controllers/search';
 import * as items from './controllers/items';
 import * as categories from './controllers/categories';
