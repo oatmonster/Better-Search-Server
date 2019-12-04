@@ -128,9 +128,7 @@ const search = ( req, res ) => {
           listingInfo: {
             startTimeUtc: item.listingInfo.startTime,
             endTimeUtc: item.listingInfo.endTime,
-            endTimeLocal: undefined,
             timeRemaining: item.sellingStatus.timeLeft,
-            timeTilEndDay: undefined,
           },
           listingType: undefined,
           bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
@@ -173,16 +171,6 @@ const search = ( req, res ) => {
 
         if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
           cleanItem.bidCount = +item.sellingStatus.bidCount;
-        }
-
-        cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
-
-        let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
-
-        if ( timeTilEndDay.asMilliseconds() < 1 ) {
-          cleanItem.listingInfo.timeTilEndDay = 'PT0S';
-        } else {
-          cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
         }
 
         return cleanItem;

@@ -104,7 +104,7 @@ const getItem = ( req, res ) => {
       itemId: result.ItemID,
       title: result.Title,
       thumbnailUrl: result.PictureDetails.GalleryURL,
-      galleryUrls: result.PictureDetails.PictureURL,
+      galleryUrls: [].concat( result.PictureDetails.PictureURL || [] ),
       country: result.Country,
       category: {
         categoryId: result.PrimaryCategory.CategoryID,
@@ -113,9 +113,7 @@ const getItem = ( req, res ) => {
       listingInfo: {
         startTimeUtc: result.ListingDetails.StartTime,
         endTimeUtc: result.ListingDetails.EndTime,
-        endTimeLocal: undefined,
         timeRemaining: result.TimeLeft,
-        timeTilEndDay: undefined,
       },
       listingType: undefined,
       bestOfferEnabled: false,
@@ -168,17 +166,6 @@ const getItem = ( req, res ) => {
       cleanItem.bidCount = +result.SellingStatus.BidCount;
     }
 
-    // Set listing time info
-    cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
-
-    let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
-
-    if ( timeTilEndDay.asMilliseconds() < 1 ) {
-      cleanItem.listingInfo.timeTilEndDay = 'PT0S';
-    } else {
-      cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
-    }
-
     res.status( 200 ).json( cleanItem );
   } ).catch( error => {
     console.error( error.message );
@@ -197,7 +184,7 @@ const getItemPictures = ( req, res ) => {
   request( url ).then( response => {
     return parser( response );
   } ).then( result => {
-    res.status( 200 ).json( result.GetSingleItemResponse.Item.PictureURL );
+    res.status( 200 ).json( [].concat( result.GetSingleItemResponse.Item.PictureURL || [] ) );
   } ).catch( error => {
     console.error( error );
     res.sendStatus( 500 );

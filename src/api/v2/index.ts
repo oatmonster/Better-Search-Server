@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
+import moment from 'moment-timezone';
 import * as search from './controllers/search';
 import * as items from './controllers/items';
 import * as categories from './controllers/categories';
@@ -39,12 +40,19 @@ router.get( '/time', ( req, res ) => {
     },
     body: body,
   };
-  request( options ).then( response => {
+  let timeZone = 'America/Los_Angeles'
+  request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
+    timeZone = response.timezone;
+    return request( options );
+  } ).catch( error => {
+    return request( options );
+  } ).then( response => {
     return parser( response );
   } ).then( result => {
     let times = {
       ebayTime: result.GeteBayTimeResponse.Timestamp,
-      serverTime: new Date().toISOString(),
+      timeZone: timeZone,
+      // localTime: moment( result.GeteBayTimeResponse.Timestamp ).tz( timeZone ).toString(),
     };
     res.json( times );
   } ).catch( error => {

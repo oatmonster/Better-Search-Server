@@ -26,9 +26,7 @@ export interface IItem {
   listingInfo: {
     startTimeUtc: string,
     endTimeUtc: string,
-    endTimeLocal: string,
     timeRemaining: string,
-    timeTilEndDay: string,
   },
   listingType: 'Advertisement' | 'Auction' | 'AuctionWithBIN' | 'FixedPrice' | 'OtherType',
   bestOfferEnabled: boolean,
