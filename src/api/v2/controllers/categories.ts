@@ -37,8 +37,8 @@ const getCategories = ( req, res ) => {
         // Handle errors
         throw new Error( 'ERROR: Ebay Error' );
       }
-
-      let cleanCategories: ICategory[] = result.GetCategoryInfoResponse.CategoryArray.Category.map( category => {
+      let categories = [].concat( result.GetCategoryInfoResponse.CategoryArray.Category || [] );
+      let cleanCategories: ICategory[] = categories.map( category => {
         let cleanCategory: ICategory = {
           categoryId: category.CategoryID,
           categoryName: category.CategoryName,
@@ -84,8 +84,8 @@ const getCategories = ( req, res ) => {
         // Handle errors
         throw new Error( 'ERROR: Ebay Error' );
       }
-
-      let cleanCategories: ICategory[] = result.GetCategoriesResponse.CategoryArray.Category.map( category => {
+      let categories = [].concat( result.GetCategoriesResponse.CategoryArray.Category || [] );
+      let cleanCategories: ICategory[] = categories.map( category => {
         let cleanCategory: ICategory = {
           categoryId: category.CategoryID,
           categoryName: category.CategoryName,
@@ -186,7 +186,8 @@ const getCategoryConditions = ( req, res ) => {
       throw new Error( 'ERROR: Ebay Error' );
     }
     if ( result.GetCategoryFeaturesResponse.hasOwnProperty( 'Category' ) ) {
-      let cleanConditions: ICondition[] = result.GetCategoryFeaturesResponse.Category.ConditionValues.Condition.map( condition => {
+      let conditions = [].concat( result.GetCategoryFeaturesResponse.Category.ConditionValues.Condition || [] );
+      let cleanConditions: ICondition[] = conditions.map( condition => {
         let cleanCondition: ICondition = {
           conditionId: condition.ID,
           conditionName: condition.DisplayName,

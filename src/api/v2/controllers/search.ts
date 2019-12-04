@@ -116,78 +116,78 @@ const search = ( req, res ) => {
         },
         searchEbayUrl: result.itemSearchURL
       };
-      if ( result.searchResult.hasOwnProperty( 'item' ) && result.searchResult.item.length > 0 ) {
-        clean.searchResult.items = result.searchResult.item.map( item => {
-          let cleanItem: IItem = {
-            itemId: item.itemId,
-            title: item.title,
-            thumbnailUrl: item.pictureURLLarge ||
-              item.galleryURL ||
-              'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
-            country: item.country,
-            listingInfo: {
-              startTimeUtc: item.listingInfo.startTime,
-              endTimeUtc: item.listingInfo.endTime,
-              endTimeLocal: undefined,
-              timeRemaining: item.sellingStatus.timeLeft,
-              timeTilEndDay: undefined,
-            },
-            listingType: undefined,
-            bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
-            buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
-            currentPrice: {
-              price: +item.sellingStatus.currentPrice[ '_' ],
-              currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
-            },
-            currentPriceConverted: {
-              price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
-              currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
-            },
-            sellingState: item.sellingStatus.sellingState,
-            watchCount: +item.listingInfo.watchCount,
-            shippingInfo: {
-              type: item.shippingInfo.shippingType,
-              cost: +item.shippingInfo.shippingServiceCost[ '_' ],
-              currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
-            },
-            category: item.primaryCategory,
-            itemEbayUrl: item.viewItemURL,
+      let items = [].concat( result.searchResult.item || [] );
+      clean.searchResult.items = items.map( item => {
+        let cleanItem: IItem = {
+          itemId: item.itemId,
+          title: item.title,
+          thumbnailUrl: item.pictureURLLarge ||
+            item.galleryURL ||
+            'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
+          country: item.country,
+          listingInfo: {
+            startTimeUtc: item.listingInfo.startTime,
+            endTimeUtc: item.listingInfo.endTime,
+            endTimeLocal: undefined,
+            timeRemaining: item.sellingStatus.timeLeft,
+            timeTilEndDay: undefined,
+          },
+          listingType: undefined,
+          bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
+          buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
+          currentPrice: {
+            price: +item.sellingStatus.currentPrice[ '_' ],
+            currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
+          },
+          currentPriceConverted: {
+            price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
+            currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
+          },
+          sellingState: item.sellingStatus.sellingState,
+          watchCount: +item.listingInfo.watchCount,
+          shippingInfo: {
+            type: item.shippingInfo.shippingType,
+            cost: +item.shippingInfo.shippingServiceCost[ '_' ],
+            currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
+          },
+          category: item.primaryCategory,
+          itemEbayUrl: item.viewItemURL,
+        };
+
+        if ( item.hasOwnProperty( 'condition' ) ) {
+          cleanItem.condition = {
+            conditionId: item.condition.conditionId,
+            conditionName: item.condition.conditionDisplayName
           };
+        }
 
-          if ( item.hasOwnProperty( 'condition' ) ) {
-            cleanItem.condition = {
-              conditionId: item.condition.conditionId,
-              conditionName: item.condition.conditionDisplayName
-            };
-          }
+        if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
+          cleanItem.listingType = 'Advertisement';
+        } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
+          cleanItem.listingType = item.listingInfo.listingType;
+        } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
+          cleanItem.listingType = 'FixedPrice';
+        } else {
+          cleanItem.listingType = 'OtherType';
+        }
 
-          if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
-            cleanItem.listingType = 'Advertisement';
-          } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
-            cleanItem.listingType = item.listingInfo.listingType;
-          } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
-            cleanItem.listingType = 'FixedPrice';
-          } else {
-            cleanItem.listingType = 'OtherType';
-          }
+        if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
+          cleanItem.bidCount = +item.sellingStatus.bidCount;
+        }
 
-          if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
-            cleanItem.bidCount = +item.sellingStatus.bidCount;
-          }
+        cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
 
-          cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
+        let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
 
-          let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
+        if ( timeTilEndDay.asMilliseconds() < 1 ) {
+          cleanItem.listingInfo.timeTilEndDay = 'PT0S';
+        } else {
+          cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
+        }
 
-          if ( timeTilEndDay.asMilliseconds() < 1 ) {
-            cleanItem.listingInfo.timeTilEndDay = 'PT0S';
-          } else {
-            cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
-          }
+        return cleanItem;
+      } );
 
-          return cleanItem;
-        } );
-      }
 
       res.status( 200 ).json( clean );
     }
