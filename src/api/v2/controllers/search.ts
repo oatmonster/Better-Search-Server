@@ -105,7 +105,7 @@ const search = ( req, res ) => {
     } else {
       let clean: ISearchResult = {
         searchResult: {
-          count: result.searchResult.item.length,
+          count: result.searchResult[ '$' ].count,
           items: []
         },
         pagination: {
