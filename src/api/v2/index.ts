@@ -20,6 +20,7 @@ router.get( '/categories/:categoryId', categories.getCategory );
 router.get( '/categories/:categoryId/conditions', categories.getCategoryConditions );
 
 router.get( '/time', ( req, res ) => {
+  console.log( 'REQUEST Get time' );
   let body = `
     <?xml version="1.0" encoding="utf-8"?>
     <GeteBayTimeRequest xmlns="urn:ebay:apis:eBLBaseComponents">
@@ -51,35 +52,12 @@ router.get( '/time', ( req, res ) => {
     let times = {
       ebayTime: result.GeteBayTimeResponse.Timestamp,
       timeZone: timeZone,
-      // localTime: moment( result.GeteBayTimeResponse.Timestamp ).tz( timeZone ).toString(),
     };
-    res.json( times );
+    res.status( 200 ).json( times );
   } ).catch( error => {
     console.error( error );
     res.sendStatus( 500 );
   } );
-} );
-
-router.get( '/ip', ( req, res ) => {
-  try {
-    let url = `https://api.ipgeolocation.io/ipgeo?apiKey=${ipApiKey}&ip=${req.ip}`;
-
-    request( url, { json: true } ).then( response => {
-      res.json( {
-        ip: response.ip,
-        zipCode: response.zipcode
-      } );
-    } ).catch( error => {
-      res.json( {
-        ip: req.ip,
-        zipCode: '98177'
-      } );
-    } );
-  } catch ( error ) {
-    console.error( error );
-    res.sendStatus( 500 );
-  }
-
 } );
 
 module.exports = router;
