@@ -1,6 +1,5 @@
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
-import moment from 'moment-timezone';
 import { IItem, ISearchResult } from '../common/interfaces';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
@@ -19,17 +18,23 @@ const search = ( req, res ) => {
   let selectorIndex = 1;
 
   // ====================================================================================
-  // Pagination
+  // Query
   // ====================================================================================
   if ( req.query.hasOwnProperty( 'query' ) ) {
     searchUrl += '&keywords=' + req.query.query;
+  } else {
+    // Throw Error
   }
 
   // ====================================================================================
   // Pagination
   // ====================================================================================
-  if ( req.query.hasOwnProperty( 'page' ) && Number.isInteger( +req.query.page ) && +req.query.page > 1 ) {
-    searchUrl += '&paginationInput.pageNumber=' + req.query.page;
+  if ( req.query.hasOwnProperty( 'page' ) ) {
+    if ( Number.isInteger( +req.query.page ) && +req.query.page > 1 ) {
+      searchUrl += '&paginationInput.pageNumber=' + req.query.page;
+    } else {
+      // Throw Error
+    }
   }
 
   // ====================================================================================
@@ -42,8 +47,12 @@ const search = ( req, res ) => {
     [ 4, 'PricePlusShippingHighest' ]
   ] );
 
-  if ( req.query.hasOwnProperty( 'sortBy' ) && validSortings.has( +req.query.sortBy ) ) {
-    searchUrl += '&sortOrder=' + validSortings.get( +req.query.sortBy );
+  if ( req.query.hasOwnProperty( 'sortBy' ) ) {
+    if ( validSortings.has( +req.query.sortBy ) ) {
+      searchUrl += '&sortOrder=' + validSortings.get( +req.query.sortBy );
+    } else {
+      // Throw Error
+    }
   }
 
   // ====================================================================================
@@ -74,6 +83,8 @@ const search = ( req, res ) => {
       searchUrl += `&itemFilter(${filterIndex}).value(0)=AuctionWithBIN`;
       searchUrl += `&itemFilter(${filterIndex}).value(1)=Auction`;
       filterIndex++;
+    } else {
+      // Throw Error
     }
   }
 
@@ -91,109 +102,100 @@ const search = ( req, res ) => {
 
   request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
     searchUrl += `&buyerPostalCode=${response.geo.zipcode}`;
-    timeZone = response.timezone;
   } ).catch( error => {
     searchUrl += `&buyerPostalCode=98177`;
-    timeZone = 'America/Los_Angeles'
   } ).then( () => {
-    return request( searchUrl );
+    return request.get( searchUrl );
   } ).then( response => {
     return parser( response );
   } ).then( result => {
     result = result.findItemsAdvancedResponse;
     if ( result.ack == 'Failure' ) {
-      res.sendStatus( 400 );
+      // Process error message to get invalid parameter
+      res.status( 400 ).json( 'Failure ack' );
     } else {
       let clean: ISearchResult = {
         searchResult: {
-          count: result.searchResult.item.length,
+          count: result.searchResult[ '$' ].count,
           items: []
         },
         pagination: {
           page: +result.paginationOutput.pageNumber,
           totalPages: +result.paginationOutput.totalPages,
+          totalEntries: +result.paginationOutput.totalEntries,
           entriesPerPage: +result.paginationOutput.entriesPerPage,
         },
         searchEbayUrl: result.itemSearchURL
       };
-      if ( result.searchResult.hasOwnProperty( 'item' ) && result.searchResult.item.length > 0 ) {
-        clean.searchResult.items = result.searchResult.item.map( item => {
-          let cleanItem: IItem = {
-            itemId: item.itemId,
-            title: item.title,
-            thumbnailUrl: item.pictureURLLarge ||
-              item.galleryURL ||
-              'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
-            country: item.country,
-            listingInfo: {
-              startTimeUtc: item.listingInfo.startTime,
-              endTimeUtc: item.listingInfo.endTime,
-              endTimeLocal: undefined,
-              timeRemaining: item.sellingStatus.timeLeft,
-              timeTilEndDay: undefined,
-            },
-            listingType: undefined,
-            bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
-            buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
-            currentPrice: {
-              price: +item.sellingStatus.currentPrice[ '_' ],
-              currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
-            },
-            currentPriceConverted: {
-              price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
-              currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
-            },
-            sellingState: item.sellingStatus.sellingState,
-            watchCount: +item.listingInfo.watchCount,
-            shippingInfo: {
-              type: item.shippingInfo.shippingType,
-              cost: +item.shippingInfo.shippingServiceCost[ '_' ],
-              currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
-            },
-            category: item.primaryCategory,
-            itemEbayUrl: item.viewItemURL,
+      let items = [].concat( result.searchResult.item || [] );
+      clean.searchResult.items = items.map( item => {
+        let cleanItem: IItem = {
+          itemId: item.itemId,
+          title: item.title,
+          thumbnailUrl: item.pictureURLLarge ||
+            item.galleryURL ||
+            'https://thumbs1.ebaystatic.com/pict/04040_0.jpg',
+          country: item.country,
+          listingInfo: {
+            startTimeUtc: item.listingInfo.startTime,
+            endTimeUtc: item.listingInfo.endTime,
+            timeRemaining: item.sellingStatus.timeLeft,
+          },
+          listingType: undefined,
+          bestOfferEnabled: item.listingInfo.bestOfferEnabled === 'true',
+          buyItNowEnabled: item.listingInfo.buyItNowAvailable === 'true',
+          currentPrice: {
+            price: +item.sellingStatus.currentPrice[ '_' ],
+            currencyId: item.sellingStatus.currentPrice[ '$' ].currencyId
+          },
+          currentPriceConverted: {
+            price: +item.sellingStatus.convertedCurrentPrice[ '_' ],
+            currencyId: item.sellingStatus.convertedCurrentPrice[ '$' ].currencyId
+          },
+          sellingState: item.sellingStatus.sellingState,
+          watchCount: +item.listingInfo.watchCount,
+          shippingInfo: {
+            type: item.shippingInfo.shippingType,
+            cost: +item.shippingInfo.shippingServiceCost[ '_' ],
+            currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
+          },
+          category: item.primaryCategory,
+          itemEbayUrl: item.viewItemURL,
+        };
+
+        if ( item.hasOwnProperty( 'condition' ) ) {
+          cleanItem.condition = {
+            conditionId: item.condition.conditionId,
+            conditionName: item.condition.conditionDisplayName
           };
+        }
 
-          if ( item.hasOwnProperty( 'condition' ) ) {
-            cleanItem.condition = {
-              conditionId: item.condition.conditionId,
-              conditionName: item.condition.conditionDisplayName
-            };
-          }
+        if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
+          cleanItem.listingType = 'Advertisement';
+        } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
+          cleanItem.listingType = item.listingInfo.listingType;
+        } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
+          cleanItem.listingType = 'FixedPrice';
+        } else {
+          cleanItem.listingType = 'OtherType';
+        }
 
-          if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
-            cleanItem.listingType = 'Advertisement';
-          } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
-            cleanItem.listingType = item.listingInfo.listingType;
-          } else if ( item.listingInfo.listingType === 'StoreInventory' ) {
-            cleanItem.listingType = 'FixedPrice';
-          } else {
-            cleanItem.listingType = 'OtherType';
-          }
+        if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
+          cleanItem.bidCount = +item.sellingStatus.bidCount;
+        }
 
-          if ( cleanItem.listingType === 'Auction' || cleanItem.listingType === 'AuctionWithBIN' ) {
-            cleanItem.bidCount = +item.sellingStatus.bidCount;
-          }
-
-          cleanItem.listingInfo.endTimeLocal = moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).toString();
-
-          let timeTilEndDay = moment.duration( moment( cleanItem.listingInfo.endTimeUtc ).tz( timeZone ).startOf( 'day' ).diff( moment().tz( timeZone ) ) );
-
-          if ( timeTilEndDay.asMilliseconds() < 1 ) {
-            cleanItem.listingInfo.timeTilEndDay = 'PT0S';
-          } else {
-            cleanItem.listingInfo.timeTilEndDay = timeTilEndDay.toISOString();
-          }
-
-          return cleanItem;
-        } );
-      }
+        return cleanItem;
+      } );
 
       res.status( 200 ).json( clean );
     }
   } ).catch( error => {
-    console.error( error.message );
+    // console.error( error.message );
+    if ( false /* Error was caused by bad parameter*/ ) {
+      res.sendStatus( 400 );
+    }
     res.sendStatus( 500 );
+    console.error( error );
   } );
 }
 

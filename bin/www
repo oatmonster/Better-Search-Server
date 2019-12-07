@@ -10,6 +10,9 @@ app.set( 'trust proxy', true );
 // Create Http server.
 let server = http.createServer( app );
 
+// Don't keep connections alive (weird interactions with ebay api and request-promise-native)
+server.keepAliveTimeout = 0;
+
 // Listen on provided port, on all network interfaces.
 server.listen( port );
 server.on( 'error', onError );
