@@ -59,6 +59,7 @@ export interface ISearchResult {
   pagination: {
     page: number,
     totalPages: number,
+    totalEntries: number,
     entriesPerPage: number,
   },
   searchEbayUrl: string,
