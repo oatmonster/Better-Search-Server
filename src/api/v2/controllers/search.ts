@@ -18,17 +18,23 @@ const search = ( req, res ) => {
   let selectorIndex = 1;
 
   // ====================================================================================
-  // Pagination
+  // Query
   // ====================================================================================
   if ( req.query.hasOwnProperty( 'query' ) ) {
     searchUrl += '&keywords=' + req.query.query;
+  } else {
+    // Throw Error
   }
 
   // ====================================================================================
   // Pagination
   // ====================================================================================
-  if ( req.query.hasOwnProperty( 'page' ) && Number.isInteger( +req.query.page ) && +req.query.page > 1 ) {
-    searchUrl += '&paginationInput.pageNumber=' + req.query.page;
+  if ( req.query.hasOwnProperty( 'page' ) ) {
+    if ( Number.isInteger( +req.query.page ) && +req.query.page > 1 ) {
+      searchUrl += '&paginationInput.pageNumber=' + req.query.page;
+    } else {
+      // Throw Error
+    }
   }
 
   // ====================================================================================
@@ -41,8 +47,12 @@ const search = ( req, res ) => {
     [ 4, 'PricePlusShippingHighest' ]
   ] );
 
-  if ( req.query.hasOwnProperty( 'sortBy' ) && validSortings.has( +req.query.sortBy ) ) {
-    searchUrl += '&sortOrder=' + validSortings.get( +req.query.sortBy );
+  if ( req.query.hasOwnProperty( 'sortBy' ) ) {
+    if ( validSortings.has( +req.query.sortBy ) ) {
+      searchUrl += '&sortOrder=' + validSortings.get( +req.query.sortBy );
+    } else {
+      // Throw Error
+    }
   }
 
   // ====================================================================================
@@ -73,6 +83,8 @@ const search = ( req, res ) => {
       searchUrl += `&itemFilter(${filterIndex}).value(0)=AuctionWithBIN`;
       searchUrl += `&itemFilter(${filterIndex}).value(1)=Auction`;
       filterIndex++;
+    } else {
+      // Throw Error
     }
   }
 
@@ -90,18 +102,17 @@ const search = ( req, res ) => {
 
   request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
     searchUrl += `&buyerPostalCode=${response.geo.zipcode}`;
-    timeZone = response.timezone;
   } ).catch( error => {
     searchUrl += `&buyerPostalCode=98177`;
-    timeZone = 'America/Los_Angeles'
   } ).then( () => {
-    return request( searchUrl );
+    return request.get( searchUrl );
   } ).then( response => {
     return parser( response );
   } ).then( result => {
     result = result.findItemsAdvancedResponse;
     if ( result.ack == 'Failure' ) {
-      res.sendStatus( 400 );
+      // Process error message to get invalid parameter
+      res.status( 400 ).json( 'Failure ack' );
     } else {
       let clean: ISearchResult = {
         searchResult: {
@@ -111,6 +122,7 @@ const search = ( req, res ) => {
         pagination: {
           page: +result.paginationOutput.pageNumber,
           totalPages: +result.paginationOutput.totalPages,
+          totalEntries: +result.paginationOutput.totalEntries,
           entriesPerPage: +result.paginationOutput.entriesPerPage,
         },
         searchEbayUrl: result.itemSearchURL
@@ -178,8 +190,12 @@ const search = ( req, res ) => {
       res.status( 200 ).json( clean );
     }
   } ).catch( error => {
-    console.error( error.message );
+    // console.error( error.message );
+    if ( false /* Error was caused by bad parameter*/ ) {
+      res.sendStatus( 400 );
+    }
     res.sendStatus( 500 );
+    console.error( error );
   } );
 }
 
