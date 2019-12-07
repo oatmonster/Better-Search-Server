@@ -1,7 +1,8 @@
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
 import { IItem } from '../common/interfaces';
-import * as utils from '../common/utils';
+import { HttpError, countUtf8Bytes } from '../common/utils';
+// import * as utils from '../common/utils';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
 const appId = process.env.APP_ID;
@@ -40,7 +41,7 @@ const getItem = ( req, res ) => {
       url: 'https://open.api.ebay.com/shopping',
       headers: {
         'Content-Type': 'text/xml',
-        'Content-Length': utils.countUtf8Bytes( body ),
+        'Content-Length': countUtf8Bytes( body ),
         'X-EBAY-API-APP-ID': appId,
         'X-EBAY-API-SITE-ID': '0',
         'X-EBAY-API-CALL-NAME': 'GetShippingCosts',
@@ -55,8 +56,9 @@ const getItem = ( req, res ) => {
   } ).then( response => {
     return parser( response );
   } ).then( result => {
-    if ( result.GetShippingCostsResponse.Ack != "Success" ) {
-      throw new Error( 'ERROR: Failed to get shipping info' );
+    if ( result.GetShippingCostsResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure 
+      throw new HttpError( 'Failed to get shipping info', 400 );
     }
     shippingInfo.type = result.GetShippingCostsResponse.ShippingCostSummary.ShippingType;
     shippingInfo.cost = +result.GetShippingCostsResponse.ShippingCostSummary.ShippingServiceCost[ '_' ];
@@ -82,7 +84,7 @@ const getItem = ( req, res ) => {
       url: 'https://api.ebay.com/ws/api.dll',
       headers: {
         'Content-Type': 'text/xml',
-        'Content-Length': utils.countUtf8Bytes( body ),
+        'Content-Length': countUtf8Bytes( body ),
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'GetItem',
@@ -93,10 +95,10 @@ const getItem = ( req, res ) => {
   } ).then( response => {
     return parser( response );
   } ).then( result => {
-    if ( result.GetItemResponse.Ack != "Success" ) {
-      throw new Error( 'ERROR: Failed to get item' );
+    if ( result.GetItemResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure 
+      throw new HttpError( 'Failed to get item info', 400 );
     }
-    delete result.GetItemResponse[ '$' ];
     result = result.GetItemResponse.Item;
 
     let cleanItem: IItem = {
@@ -167,8 +169,13 @@ const getItem = ( req, res ) => {
 
     res.status( 200 ).json( cleanItem );
   } ).catch( error => {
-    console.error( error.message );
-    res.sendStatus( 500 );
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
   } );
 
 }
@@ -183,10 +190,19 @@ const getItemPictures = ( req, res ) => {
   request( url ).then( response => {
     return parser( response );
   } ).then( result => {
+    if ( result.GetSingleItemResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure
+      throw new HttpError( 'getSingleItem request failed', 400 );
+    }
     res.status( 200 ).json( [].concat( result.GetSingleItemResponse.Item.PictureURL || [] ) );
   } ).catch( error => {
-    console.error( error );
-    res.sendStatus( 500 );
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
   } );
 
 }
@@ -202,10 +218,19 @@ const getItemDescription = ( req, res ) => {
   request( url ).then( response => {
     return parser( response );
   } ).then( result => {
+    if ( result.GetSingleItemResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure
+      throw new HttpError( 'getSingleItem request failed', 400 );
+    }
     res.status( 200 ).json( result.GetSingleItemResponse.Item.Description );
   } ).catch( error => {
-    console.error( error );
-    res.sendStatus( 500 );
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
   } );
 }
 
