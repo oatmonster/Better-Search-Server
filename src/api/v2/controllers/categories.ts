@@ -1,7 +1,7 @@
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
 import { ICategory, ICondition } from '../common/interfaces';
-import * as utils from '../common/utils';
+import { HttpError, countUtf8Bytes } from '../common/utils';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
 const appId = process.env.APP_ID;
@@ -10,18 +10,7 @@ const authNAuth = process.env.AUTH_N_AUTH;
 const getCategories = ( req, res ) => {
   if ( req.query.hasOwnProperty( 'parentId' ) ) {
     console.log( 'REQUEST Get categories with parent:', req.query.parentId );
-    let options = {
-      method: 'POST',
-      url: 'https://open.api.ebay.com/shopping',
-      headers: {
-        'Content-Type': 'text/xml',
-        'X-EBAY-API-APP-ID': appId,
-        'X-EBAY-API-SITE-ID': '0',
-        'X-EBAY-API-CALL-NAME': 'GetCategoryInfo',
-        'X-EBAY-API-VERSION': '963',
-        'X-EBAY-API-REQUEST-ENCODING': 'xml',
-      },
-      body: `
+    let body = `
       <?xml version="1.0" encoding="utf-8"?>
       <GetCategoryInfoRequest xmlns="urn:ebay:apis:eBLBaseComponents">
         <ErrorLanguage>en_US</ErrorLanguage>
@@ -29,14 +18,27 @@ const getCategories = ( req, res ) => {
         <CategoryID>${req.query.parentId}</CategoryID>
         <IncludeSelector>ChildCategories</IncludeSelector>
       </GetCategoryInfoRequest>
-      `,
+    `;
+    let options = {
+      method: 'POST',
+      url: 'https://open.api.ebay.com/shopping',
+      headers: {
+        'Content-Type': 'text/xml',
+        'Content-Length': countUtf8Bytes( body ),
+        'X-EBAY-API-APP-ID': appId,
+        'X-EBAY-API-SITE-ID': '0',
+        'X-EBAY-API-CALL-NAME': 'GetCategoryInfo',
+        'X-EBAY-API-VERSION': '963',
+        'X-EBAY-API-REQUEST-ENCODING': 'xml',
+      },
+      body: body,
     };
     request( options ).then( response => {
       return parser( response );
     } ).then( result => {
       if ( result.GetCategoryInfoResponse.Ack !== 'Success' ) {
-        // Handle errors
-        throw new Error( 'ERROR: Ebay Error' );
+        // TODO: Check ebay error message to find cause of failure 
+        throw new HttpError( 'Failed to get category info', 400 );
       }
       let categories = [].concat( result.GetCategoryInfoResponse.CategoryArray.Category || [] );
       let cleanCategories: ICategory[] = categories.map( category => {
@@ -50,8 +52,13 @@ const getCategories = ( req, res ) => {
 
       res.json( cleanCategories );
     } ).catch( error => {
-      console.error( error );
-      res.sendStatus( 500 );
+      if ( error instanceof HttpError ) {
+        console.error( error.toString() );
+        res.sendStatus( error.status );
+      } else {
+        console.error( error );
+        res.sendStatus( 500 );
+      }
     } );
   } else {
     console.log( 'REQUEST Get root categories' );
@@ -73,7 +80,7 @@ const getCategories = ( req, res ) => {
       url: 'https://api.ebay.com/ws/api.dll',
       headers: {
         'Content-Type': 'text/xml',
-        'Content-Length': utils.countUtf8Bytes( body ),
+        'Content-Length': countUtf8Bytes( body ),
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'GetCategories',
@@ -84,8 +91,8 @@ const getCategories = ( req, res ) => {
       return parser( response );
     } ).then( result => {
       if ( result.GetCategoriesResponse.Ack !== 'Success' ) {
-        // Handle errors
-        throw new Error( 'ERROR: Ebay Error' );
+        // TODO: Check ebay error message to find cause of failure 
+        throw new HttpError( 'Failed to get category info', 400 );
       }
       let categories = [].concat( result.GetCategoriesResponse.CategoryArray.Category || [] );
       let cleanCategories: ICategory[] = categories.map( category => {
@@ -99,8 +106,13 @@ const getCategories = ( req, res ) => {
 
       res.json( cleanCategories );
     } ).catch( error => {
-      console.error( error );
-      res.sendStatus( 500 );
+      if ( error instanceof HttpError ) {
+        console.error( error.toString() );
+        res.sendStatus( error.status );
+      } else {
+        console.error( error );
+        res.sendStatus( 500 );
+      }
     } );
   }
 }
@@ -120,7 +132,7 @@ const getCategory = ( req, res ) => {
     url: 'https://open.api.ebay.com/shopping',
     headers: {
       'Content-Type': 'text/xml',
-      'Content-Length': utils.countUtf8Bytes( body ),
+      'Content-Length': countUtf8Bytes( body ),
       'X-EBAY-API-APP-ID': appId,
       'X-EBAY-API-SITE-ID': '0',
       'X-EBAY-API-CALL-NAME': 'GetCategoryInfo',
@@ -135,25 +147,29 @@ const getCategory = ( req, res ) => {
     if ( result.GetCategoryInfoResponse.Ack !== 'Success' ) {
       if ( result.GetCategoryInfoResponse.Errors.ErrorCode === '10.54' ) {
         // Category does not exist
-        res.sendStatus( 404 );
+        throw new HttpError( 'Failed to get category info, category does not exist', 404 );
       } else {
-        // Handle errors
-        throw new Error( 'ERROR: Ebay Error' );
+        // TODO: Check ebay error message to find cause of failure 
+        throw new HttpError( 'Failed to get category info', 400 );
       }
-    } else {
-      let cleanCategory: ICategory = {
-        categoryId: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryID,
-        categoryName: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryName,
-        parentId: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryParentID,
-      }
-      if ( result.GetCategoryInfoResponse.CategoryArray.Category.CategoryLevel === '1' ) {
-        cleanCategory.parentId = result.GetCategoryInfoResponse.CategoryArray.Category.CategoryID;
-      }
-      res.status( 200 ).json( cleanCategory );
     }
+    let cleanCategory: ICategory = {
+      categoryId: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryID,
+      categoryName: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryName,
+      parentId: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryParentID,
+    }
+    if ( result.GetCategoryInfoResponse.CategoryArray.Category.CategoryLevel === '1' ) {
+      cleanCategory.parentId = result.GetCategoryInfoResponse.CategoryArray.Category.CategoryID;
+    }
+    res.status( 200 ).json( cleanCategory );
   } ).catch( error => {
-    console.error( error );
-    res.sendStatus( 500 );
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
   } );
 }
 
@@ -178,7 +194,7 @@ const getCategoryConditions = ( req, res ) => {
     url: 'https://api.ebay.com/ws/api.dll',
     headers: {
       'Content-Type': 'text/xml',
-      'Content-Length': utils.countUtf8Bytes( body ),
+      'Content-Length': countUtf8Bytes( body ),
       'X-EBAY-API-SITEID': '0',
       'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
       'X-EBAY-API-CALL-NAME': 'GetCategoryFeatures',
@@ -189,8 +205,8 @@ const getCategoryConditions = ( req, res ) => {
     return parser( response );
   } ).then( result => {
     if ( result.GetCategoryFeaturesResponse.Ack !== 'Success' ) {
-      // Handle errors
-      throw new Error( 'ERROR: Ebay Error' );
+      // TODO: Check ebay error message to find cause of failure 
+      throw new HttpError( 'Failed to get condition info', 400 );
     }
     if ( result.GetCategoryFeaturesResponse.hasOwnProperty( 'Category' ) ) {
       let conditions = [].concat( result.GetCategoryFeaturesResponse.Category.ConditionValues.Condition || [] );
@@ -206,8 +222,13 @@ const getCategoryConditions = ( req, res ) => {
       res.status( 200 ).json( [] );
     }
   } ).catch( error => {
-    console.error( error );
-    res.sendStatus( 500 );
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
   } );
 }
 
