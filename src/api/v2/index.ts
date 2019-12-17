@@ -4,7 +4,7 @@ import xml2js from 'xml2js';
 import * as search from './controllers/search';
 import * as items from './controllers/items';
 import * as categories from './controllers/categories';
-import * as utils from './common/utils';
+import { countUtf8Bytes } from './common/utils';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
 const router = express.Router();
@@ -15,7 +15,7 @@ router.get( '/search', search.search );
 router.get( '/items/:id', items.getItem );
 router.get( '/items/:id/pictures', items.getItemPictures );
 router.get( '/items/:id/description', items.getItemDescription );
-router.get( '/categories', categories.getCategories );
+router.get( '/categories', categories.getRootCategories );
 router.get( '/categories/:categoryId', categories.getCategory );
 router.get( '/categories/:categoryId/conditions', categories.getCategoryConditions );
 
@@ -31,7 +31,7 @@ router.get( '/time', ( req, res ) => {
     url: 'https://open.api.ebay.com/shopping',
     headers: {
       'Content-Type': 'text/xml',
-      'Content-Length': utils.countUtf8Bytes( body ),
+      'Content-Length': countUtf8Bytes( body ),
       'X-EBAY-API-APP-ID': appId,
       'X-EBAY-API-SITE-ID': '0',
       'X-EBAY-API-CALL-NAME': 'GeteBayTime',

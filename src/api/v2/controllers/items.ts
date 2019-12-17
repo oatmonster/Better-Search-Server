@@ -2,70 +2,30 @@ import request from 'request-promise-native';
 import xml2js from 'xml2js';
 import { IItem } from '../common/interfaces';
 import { HttpError, countUtf8Bytes } from '../common/utils';
-// import * as utils from '../common/utils';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
 const appId = process.env.APP_ID;
 const authNAuth = process.env.AUTH_N_AUTH;
 const ipApiKey = process.env.IP_API_KEY;
 
-const getItem = ( req, res ) => {
+function getItem( req, res ) {
   console.log( 'REQUEST Get item id:', req.params.id );
-  let countryCode = 'US';
-  let zipCode = '98177';
-  let timeZone = 'America/Los_Angeles';
-  let shippingInfo = {
-    type: undefined,
-    cost: undefined,
-    currencyId: undefined,
-  };
+  let defaultCountryCode = 'US';
+  let defaultZipCode = '98177';
+  let countryCode;
+  let zipCode;
+  let shippingInfo
+
   request( `https://api.ipgeolocation.io/timezone?apiKey=${ipApiKey}&ip=${req.ip}` ).then( response => {
     countryCode = response.geo.country_code2;
     zipCode = response.geo.zipcode;
-    timeZone = response.timezone;
   } ).catch( error => {
+    countryCode = defaultCountryCode;
+    zipCode = defaultZipCode;
   } ).then( () => {
-    // Get shipping cost
-    let body = `
-      <?xml version="1.0" encoding="utf-8"?>
-      <GetShippingCostsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-        <ErrorLanguage>en_US</ErrorLanguage>
-        <WarningLevel>High</WarningLevel>
-        <ItemID>${req.params.id}</ItemID>
-        <DestinationCountryCode>${countryCode}</DestinationCountryCode>
-        <DestinationPostalCode>${zipCode}</DestinationPostalCode>
-      </GetShippingCostsRequest>
-    `;
-    let options = {
-      method: 'POST',
-      url: 'https://open.api.ebay.com/shopping',
-      headers: {
-        'Content-Type': 'text/xml',
-        'Content-Length': countUtf8Bytes( body ),
-        'X-EBAY-API-APP-ID': appId,
-        'X-EBAY-API-SITE-ID': '0',
-        'X-EBAY-API-CALL-NAME': 'GetShippingCosts',
-        'X-EBAY-API-VERSION': '963',
-        'X-EBAY-API-REQUEST-ENCODING': 'xml',
-      },
-      body: body,
-    }
-
-    return request( options );
-
-  } ).then( response => {
-    return parser( response );
-  } ).then( result => {
-    if ( result.GetShippingCostsResponse.Ack !== 'Success' ) {
-      // TODO: Check ebay error message to find cause of failure 
-      throw new HttpError( 'Failed to get shipping info', 400 );
-    }
-    shippingInfo.type = result.GetShippingCostsResponse.ShippingCostSummary.ShippingType;
-    shippingInfo.cost = +result.GetShippingCostsResponse.ShippingCostSummary.ShippingServiceCost[ '_' ];
-    shippingInfo.currencyId = result.GetShippingCostsResponse.ShippingCostSummary.ShippingServiceCost[ '$' ].currencyID;
-    if ( shippingInfo.type === 'Flat' && shippingInfo.cost === 0 ) {
-      shippingInfo.type = 'Free';
-    }
+    return getShipping( req.params.id, zipCode, countryCode );
+  } ).then( shipping => {
+    shippingInfo = shipping;
   } ).then( () => {
     let body = `
       <?xml version="1.0" encoding="utf-8"?>
@@ -180,7 +140,59 @@ const getItem = ( req, res ) => {
 
 }
 
-const getItemPictures = ( req, res ) => {
+function getShipping( id, zipCode, countryCode ): Promise<any> {
+  return new Promise( ( resolve, reject ) => {
+    let shippingInfo = {
+      type: undefined,
+      cost: undefined,
+      currencyId: undefined,
+    };
+
+    let body = `
+      <?xml version="1.0" encoding="utf-8"?>
+      <GetShippingCostsRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+        <ErrorLanguage>en_US</ErrorLanguage>
+        <WarningLevel>High</WarningLevel>
+        <ItemID>${id}</ItemID>
+        <DestinationCountryCode>${countryCode}</DestinationCountryCode>
+        <DestinationPostalCode>${zipCode}</DestinationPostalCode>
+      </GetShippingCostsRequest>
+    `;
+    let options = {
+      method: 'POST',
+      url: 'https://open.api.ebay.com/shopping',
+      headers: {
+        'Content-Type': 'text/xml',
+        'Content-Length': countUtf8Bytes( body ),
+        'X-EBAY-API-APP-ID': appId,
+        'X-EBAY-API-SITE-ID': '0',
+        'X-EBAY-API-CALL-NAME': 'GetShippingCosts',
+        'X-EBAY-API-VERSION': '963',
+        'X-EBAY-API-REQUEST-ENCODING': 'xml',
+      },
+      body: body,
+    }
+    request( options ).then( response => {
+      return parser( response );
+    } ).then( result => {
+      if ( result.GetShippingCostsResponse.Ack !== 'Success' ) {
+        // TODO: Check ebay error message to find cause of failure 
+        throw new HttpError( 'Failed to get shipping info', 400 );
+      }
+      shippingInfo.type = result.GetShippingCostsResponse.ShippingCostSummary.ShippingType;
+      shippingInfo.cost = +result.GetShippingCostsResponse.ShippingCostSummary.ShippingServiceCost[ '_' ];
+      shippingInfo.currencyId = result.GetShippingCostsResponse.ShippingCostSummary.ShippingServiceCost[ '$' ].currencyID;
+      if ( shippingInfo.type === 'Flat' && shippingInfo.cost === 0 ) {
+        shippingInfo.type = 'Free';
+      }
+      resolve( shippingInfo );
+    } ).catch( error => {
+      reject( error );
+    } );
+  } );
+}
+
+function getItemPictures( req, res ) {
   console.log( 'REQUEST Get pictures for item id:', req.params.id );
   let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=XML&siteid=0&version=967';
@@ -207,7 +219,7 @@ const getItemPictures = ( req, res ) => {
 
 }
 
-const getItemDescription = ( req, res ) => {
+function getItemDescription( req, res ) {
   console.log( 'REQUEST Get description for item id:', req.params.id );
   let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
   url += '&responseencoding=XML&siteid=0&version=967';

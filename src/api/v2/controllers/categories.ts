@@ -7,117 +7,117 @@ const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromis
 const appId = process.env.APP_ID;
 const authNAuth = process.env.AUTH_N_AUTH;
 
-const getCategories = ( req, res ) => {
-  if ( req.query.hasOwnProperty( 'parentId' ) ) {
-    console.log( 'REQUEST Get categories with parent:', req.query.parentId );
-    let body = `
-      <?xml version="1.0" encoding="utf-8"?>
-      <GetCategoryInfoRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-        <ErrorLanguage>en_US</ErrorLanguage>
-        <WarningLevel>High</WarningLevel>
-        <CategoryID>${req.query.parentId}</CategoryID>
-        <IncludeSelector>ChildCategories</IncludeSelector>
-      </GetCategoryInfoRequest>
-    `;
-    let options = {
-      method: 'POST',
-      url: 'https://open.api.ebay.com/shopping',
-      headers: {
-        'Content-Type': 'text/xml',
-        'Content-Length': countUtf8Bytes( body ),
-        'X-EBAY-API-APP-ID': appId,
-        'X-EBAY-API-SITE-ID': '0',
-        'X-EBAY-API-CALL-NAME': 'GetCategoryInfo',
-        'X-EBAY-API-VERSION': '963',
-        'X-EBAY-API-REQUEST-ENCODING': 'xml',
-      },
-      body: body,
-    };
-    request( options ).then( response => {
-      return parser( response );
-    } ).then( result => {
-      if ( result.GetCategoryInfoResponse.Ack !== 'Success' ) {
-        // TODO: Check ebay error message to find cause of failure 
-        throw new HttpError( 'Failed to get category info', 400 );
-      }
-      let categories = [].concat( result.GetCategoryInfoResponse.CategoryArray.Category || [] );
-      let cleanCategories: ICategory[] = categories.map( category => {
-        let cleanCategory: ICategory = {
-          id: category.CategoryID,
-          name: category.CategoryName,
-          parentId: category.CategoryParentID,
-        };
-        return cleanCategory;
-      } );
-
-      res.json( cleanCategories );
-    } ).catch( error => {
-      if ( error instanceof HttpError ) {
-        console.error( error.toString() );
-        res.sendStatus( error.status );
-      } else {
-        console.error( error );
-        res.sendStatus( 500 );
-      }
+function getRootCategories( req, res ) {
+  console.log( 'REQUEST Get root categories' );
+  let body = `
+    <?xml version="1.0" encoding="utf-8"?>
+    <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+      <RequesterCredentials>
+        <eBayAuthToken>${authNAuth}</eBayAuthToken>
+      </RequesterCredentials>
+      <ErrorLanguage>en_US</ErrorLanguage>
+      <WarningLevel>High</WarningLevel>
+      <CategorySiteID>0</CategorySiteID>
+      <DetailLevel>ReturnAll</DetailLevel>
+      <LevelLimit>1</LevelLimit>
+    </GetCategoriesRequest>
+  `;
+  let options = {
+    method: 'POST',
+    url: 'https://api.ebay.com/ws/api.dll',
+    headers: {
+      'Content-Type': 'text/xml',
+      'Content-Length': countUtf8Bytes( body ),
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+      'X-EBAY-API-CALL-NAME': 'GetCategories',
+    },
+    body: body,
+  };
+  request( options ).then( response => {
+    return parser( response );
+  } ).then( result => {
+    if ( result.GetCategoriesResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure 
+      throw new HttpError( 'Failed to get category info', 400 );
+    }
+    let categories = [].concat( result.GetCategoriesResponse.CategoryArray.Category || [] );
+    let cleanCategories: ICategory[] = categories.map( category => {
+      let cleanCategory: ICategory = {
+        id: category.CategoryID,
+        name: category.CategoryName,
+        parentId: category.CategoryParentID,
+      };
+      return cleanCategory;
     } );
-  } else {
-    console.log( 'REQUEST Get root categories' );
-    let body = `
-      <?xml version="1.0" encoding="utf-8"?>
-      <GetCategoriesRequest xmlns="urn:ebay:apis:eBLBaseComponents">
-        <RequesterCredentials>
-          <eBayAuthToken>${authNAuth}</eBayAuthToken>
-        </RequesterCredentials>
-        <ErrorLanguage>en_US</ErrorLanguage>
-        <WarningLevel>High</WarningLevel>
-        <CategorySiteID>0</CategorySiteID>
-        <DetailLevel>ReturnAll</DetailLevel>
-        <LevelLimit>1</LevelLimit>
-      </GetCategoriesRequest>
-    `;
-    let options = {
-      method: 'POST',
-      url: 'https://api.ebay.com/ws/api.dll',
-      headers: {
-        'Content-Type': 'text/xml',
-        'Content-Length': countUtf8Bytes( body ),
-        'X-EBAY-API-SITEID': '0',
-        'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
-        'X-EBAY-API-CALL-NAME': 'GetCategories',
-      },
-      body: body,
-    };
-    request( options ).then( response => {
-      return parser( response );
-    } ).then( result => {
-      if ( result.GetCategoriesResponse.Ack !== 'Success' ) {
-        // TODO: Check ebay error message to find cause of failure 
-        throw new HttpError( 'Failed to get category info', 400 );
-      }
-      let categories = [].concat( result.GetCategoriesResponse.CategoryArray.Category || [] );
-      let cleanCategories: ICategory[] = categories.map( category => {
-        let cleanCategory: ICategory = {
-          id: category.CategoryID,
-          name: category.CategoryName,
-          parentId: category.CategoryParentID,
-        };
-        return cleanCategory;
-      } );
 
-      res.json( cleanCategories );
-    } ).catch( error => {
-      if ( error instanceof HttpError ) {
-        console.error( error.toString() );
-        res.sendStatus( error.status );
-      } else {
-        console.error( error );
-        res.sendStatus( 500 );
-      }
-    } );
-  }
+    res.json( cleanCategories );
+  } ).catch( error => {
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
+  } );
 }
 
-const getCategory = ( req, res ) => {
+function getChildCategories( req, res ) {
+  console.log( 'REQUEST Get child categories of category:', req.query.parentId );
+  let body = `
+    <?xml version="1.0" encoding="utf-8"?>
+    <GetCategoryInfoRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+      <ErrorLanguage>en_US</ErrorLanguage>
+      <WarningLevel>High</WarningLevel>
+      <CategoryID>${req.query.parentId}</CategoryID>
+      <IncludeSelector>ChildCategories</IncludeSelector>
+    </GetCategoryInfoRequest>
+  `;
+  let options = {
+    method: 'POST',
+    url: 'https://open.api.ebay.com/shopping',
+    headers: {
+      'Content-Type': 'text/xml',
+      'Content-Length': countUtf8Bytes( body ),
+      'X-EBAY-API-APP-ID': appId,
+      'X-EBAY-API-SITE-ID': '0',
+      'X-EBAY-API-CALL-NAME': 'GetCategoryInfo',
+      'X-EBAY-API-VERSION': '963',
+      'X-EBAY-API-REQUEST-ENCODING': 'xml',
+    },
+    body: body,
+  };
+  request( options ).then( response => {
+    return parser( response );
+  } ).then( result => {
+    if ( result.GetCategoryInfoResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure 
+      throw new HttpError( 'Failed to get category info', 400 );
+    }
+    let categories = [].concat( result.GetCategoryInfoResponse.CategoryArray.Category || [] );
+    let cleanCategories: ICategory[] = categories.map( category => {
+      let cleanCategory: ICategory = {
+        id: category.CategoryID,
+        name: category.CategoryName,
+        parentId: category.CategoryParentID,
+      };
+      return cleanCategory;
+    } );
+
+    res.json( cleanCategories );
+  } ).catch( error => {
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
+  } );
+}
+
+function getCategory( req, res ) {
   console.log( 'REQUEST Get category id:', req.params.categoryId );
   let body = `
     <?xml version="1.0" encoding="utf-8"?>
@@ -173,8 +173,7 @@ const getCategory = ( req, res ) => {
   } );
 }
 
-
-const getCategoryConditions = ( req, res ) => {
+function getCategoryConditions( req, res ) {
   console.log( 'REQUEST Get conditions of category:', req.params.categoryId );
   let body = `
     <?xml version="1.0" encoding="utf-8"?>
@@ -232,4 +231,4 @@ const getCategoryConditions = ( req, res ) => {
   } );
 }
 
-export { getCategories, getCategory, getCategoryConditions };
+export { getRootCategories, getChildCategories, getCategory, getCategoryConditions };
