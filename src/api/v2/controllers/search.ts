@@ -8,8 +8,8 @@ const appId = process.env.APP_ID;
 const ipApiKey = process.env.IP_API_KEY;
 
 function search( req, res ) {
-  console.log( 'REQUEST Search query:', req.query );
-
+  console.log( 'REQUEST Search query ' + JSON.stringify( req.query ) );
+  console.time( 'REQUEST Search query ' + JSON.stringify( req.query ) );
   buildSearchUrl( req ).then( url => {
     return request.get( url );
   } ).then( response => {
@@ -29,7 +29,7 @@ function search( req, res ) {
       res.sendStatus( 500 );
     }
   } ).finally( () => {
-    console.timeEnd( 'search' );
+    console.timeEnd( 'REQUEST Search query ' + JSON.stringify( req.query ) );
   } );
 }
 
