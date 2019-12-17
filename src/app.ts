@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import * as categories from './api/v2/models/categories';
 
 const app = express();
 
@@ -9,4 +10,5 @@ app.use( '/api', require( './api' ) );
 
 app.get( '/', ( req, res ) => res.send( 'Copyright Alex Zhao 2019' ) );
 
-module.exports = app;
+exports.app = app;
+exports.init = Promise.all( [ categories.init() ] );
