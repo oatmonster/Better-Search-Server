@@ -9,7 +9,8 @@ const authNAuth = process.env.AUTH_N_AUTH;
 const ipApiKey = process.env.IP_API_KEY;
 
 function getItem( req, res ) {
-  console.log( 'REQUEST Get item id:', req.params.id );
+  console.log( 'REQUEST Get item ' + req.params.id );
+  console.time( 'REQUEST Get item ' + req.params.id );
   let defaultCountryCode = 'US';
   let defaultZipCode = '98177';
   let countryCode;
@@ -136,8 +137,68 @@ function getItem( req, res ) {
       console.error( error );
       res.sendStatus( 500 );
     }
+  } ).finally( () => {
+    console.timeEnd( 'REQUEST Get item ' + req.params.id );
   } );
+}
 
+function getItemPictures( req, res ) {
+  console.log( 'REQUEST Get pictures for item ' + req.params.id );
+  console.time( 'REQUEST Get pictures for item ' + req.params.id );
+  let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
+  url += '&responseencoding=XML&siteid=0&version=967';
+  url += '&appid=' + appId;
+  url += '&ItemID=' + req.params.id;
+
+  request( url ).then( response => {
+    return parser( response );
+  } ).then( result => {
+    if ( result.GetSingleItemResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure
+      throw new HttpError( 'getSingleItem request failed', 400 );
+    }
+    res.status( 200 ).json( [].concat( result.GetSingleItemResponse.Item.PictureURL || [] ) );
+  } ).catch( error => {
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
+  } ).finally( () => {
+    console.timeEnd( 'REQUEST Get pictures for item ' + req.params.id );
+  } );
+}
+
+function getItemDescription( req, res ) {
+  console.log( 'REQUEST Get description for item ' + req.params.id );
+  console.time( 'REQUEST Get description for item ' + req.params.id );
+  let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
+  url += '&responseencoding=XML&siteid=0&version=967';
+  url += '&appid=' + appId;
+  url += '&ItemID=' + req.params.id;
+  url += '&IncludeSelector=Description';
+
+  request( url ).then( response => {
+    return parser( response );
+  } ).then( result => {
+    if ( result.GetSingleItemResponse.Ack !== 'Success' ) {
+      // TODO: Check ebay error message to find cause of failure
+      throw new HttpError( 'getSingleItem request failed', 400 );
+    }
+    res.status( 200 ).json( result.GetSingleItemResponse.Item.Description );
+  } ).catch( error => {
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
+  } ).finally( () => {
+    console.timeEnd( 'REQUEST Get description for item ' + req.params.id );
+  } );
 }
 
 function getShipping( id, zipCode, countryCode ): Promise<any> {
@@ -189,60 +250,6 @@ function getShipping( id, zipCode, countryCode ): Promise<any> {
     } ).catch( error => {
       reject( error );
     } );
-  } );
-}
-
-function getItemPictures( req, res ) {
-  console.log( 'REQUEST Get pictures for item id:', req.params.id );
-  let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
-  url += '&responseencoding=XML&siteid=0&version=967';
-  url += '&appid=' + appId;
-  url += '&ItemID=' + req.params.id;
-
-  request( url ).then( response => {
-    return parser( response );
-  } ).then( result => {
-    if ( result.GetSingleItemResponse.Ack !== 'Success' ) {
-      // TODO: Check ebay error message to find cause of failure
-      throw new HttpError( 'getSingleItem request failed', 400 );
-    }
-    res.status( 200 ).json( [].concat( result.GetSingleItemResponse.Item.PictureURL || [] ) );
-  } ).catch( error => {
-    if ( error instanceof HttpError ) {
-      console.error( error.toString() );
-      res.sendStatus( error.status );
-    } else {
-      console.error( error );
-      res.sendStatus( 500 );
-    }
-  } );
-
-}
-
-function getItemDescription( req, res ) {
-  console.log( 'REQUEST Get description for item id:', req.params.id );
-  let url = 'http://open.api.ebay.com/shopping?callname=GetSingleItem'
-  url += '&responseencoding=XML&siteid=0&version=967';
-  url += '&appid=' + appId;
-  url += '&ItemID=' + req.params.id;
-  url += '&IncludeSelector=Description';
-
-  request( url ).then( response => {
-    return parser( response );
-  } ).then( result => {
-    if ( result.GetSingleItemResponse.Ack !== 'Success' ) {
-      // TODO: Check ebay error message to find cause of failure
-      throw new HttpError( 'getSingleItem request failed', 400 );
-    }
-    res.status( 200 ).json( result.GetSingleItemResponse.Item.Description );
-  } ).catch( error => {
-    if ( error instanceof HttpError ) {
-      console.error( error.toString() );
-      res.sendStatus( error.status );
-    } else {
-      console.error( error );
-      res.sendStatus( 500 );
-    }
   } );
 }
 
