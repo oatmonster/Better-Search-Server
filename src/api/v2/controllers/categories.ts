@@ -43,8 +43,8 @@ const getCategories = ( req, res ) => {
       let categories = [].concat( result.GetCategoryInfoResponse.CategoryArray.Category || [] );
       let cleanCategories: ICategory[] = categories.map( category => {
         let cleanCategory: ICategory = {
-          categoryId: category.CategoryID,
-          categoryName: category.CategoryName,
+          id: category.CategoryID,
+          name: category.CategoryName,
           parentId: category.CategoryParentID,
         };
         return cleanCategory;
@@ -97,8 +97,8 @@ const getCategories = ( req, res ) => {
       let categories = [].concat( result.GetCategoriesResponse.CategoryArray.Category || [] );
       let cleanCategories: ICategory[] = categories.map( category => {
         let cleanCategory: ICategory = {
-          categoryId: category.CategoryID,
-          categoryName: category.CategoryName,
+          id: category.CategoryID,
+          name: category.CategoryName,
           parentId: category.CategoryParentID,
         };
         return cleanCategory;
@@ -154,8 +154,8 @@ const getCategory = ( req, res ) => {
       }
     }
     let cleanCategory: ICategory = {
-      categoryId: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryID,
-      categoryName: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryName,
+      id: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryID,
+      name: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryName,
       parentId: result.GetCategoryInfoResponse.CategoryArray.Category.CategoryParentID,
     }
     if ( result.GetCategoryInfoResponse.CategoryArray.Category.CategoryLevel === '1' ) {
@@ -212,8 +212,8 @@ const getCategoryConditions = ( req, res ) => {
       let conditions = [].concat( result.GetCategoryFeaturesResponse.Category.ConditionValues.Condition || [] );
       let cleanConditions: ICondition[] = conditions.map( condition => {
         let cleanCondition: ICondition = {
-          conditionId: condition.ID,
-          conditionName: condition.DisplayName,
+          id: condition.ID,
+          name: condition.DisplayName,
         }
         return cleanCondition
       } );

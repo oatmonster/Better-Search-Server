@@ -108,8 +108,8 @@ const getItem = ( req, res ) => {
       galleryUrls: [].concat( result.PictureDetails.PictureURL || [] ),
       country: result.Country,
       category: {
-        categoryId: result.PrimaryCategory.CategoryID,
-        categoryName: result.PrimaryCategory.CategoryName.split( ':' ).slice( -1 )[ 0 ],
+        id: result.PrimaryCategory.CategoryID,
+        name: result.PrimaryCategory.CategoryName.split( ':' ).slice( -1 )[ 0 ],
       },
       listingInfo: {
         startTimeUtc: result.ListingDetails.StartTime,
@@ -135,8 +135,8 @@ const getItem = ( req, res ) => {
     // Set condition if user specified one
     if ( result.hasOwnProperty( 'ConditionID' ) ) {
       cleanItem.condition = {
-        conditionId: result.ConditionID,
-        conditionName: result.ConditionDisplayName,
+        id: result.ConditionID,
+        name: result.ConditionDisplayName,
       };
     }
 
