@@ -1,12 +1,12 @@
 export interface ICategory {
-  categoryId: string,
-  categoryName: string,
+  id: string,
+  name: string,
   parentId?: string,
 }
 
 export interface ICondition {
-  conditionId: string,
-  conditionName: string,
+  id: string,
+  name: string,
 }
 
 export interface IItem {
@@ -15,14 +15,8 @@ export interface IItem {
   thumbnailUrl: string,
   galleryUrls?: string[],
   country: string,
-  condition?: {
-    conditionId: string,
-    conditionName: string,
-  },
-  category: {
-    categoryId: string,
-    categoryName: string,
-  },
+  condition?: ICondition,
+  category?: ICategory,
   listingInfo: {
     startTimeUtc: string,
     endTimeUtc: string,
@@ -63,4 +57,19 @@ export interface ISearchResult {
     entriesPerPage: number,
   },
   searchEbayUrl: string,
+  aspectHistogram: {
+    aspect: string,
+    values: {
+      name: string,
+      count: number,
+    }[],
+  }[],
+  categoryHistogram: {
+    category: ICategory,
+    count: number,
+    childCategoryHistogram: {
+      category: ICategory,
+      count: number,
+    }[],
+  }[],
 }

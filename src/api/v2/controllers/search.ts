@@ -1,6 +1,6 @@
 import request from 'request-promise-native';
 import xml2js from 'xml2js';
-import { IItem, ISearchResult } from '../common/interfaces';
+import { IItem, ISearchResult, ICondition, ICategory } from '../common/interfaces';
 import { HttpError } from '../common/utils';
 
 const parser = new xml2js.Parser( { 'explicitArray': false } ).parseStringPromise;
@@ -10,15 +10,15 @@ const ipApiKey = process.env.IP_API_KEY;
 const search = ( req, res ) => {
   console.log( 'REQUEST Search query:', req.query );
 
-
-
   let searchUrl = 'https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.13.0&RESPONSE-DATA-FORMAT=XML&REST-PAYLOAD=true'
   searchUrl += '&SECURITY-APPNAME=' + appId;
   searchUrl += '&paginationInput.entriesPerPage=20';
-  searchUrl += '&outputSelector(0)=PictureURLLarge'
+  searchUrl += '&outputSelector(0)=PictureURLLarge';
+  searchUrl += '&outputSelector(1)=AspectHistogram';
+  searchUrl += '&outputSelector(2)=CategoryHistogram';
 
   let filterIndex = 0;
-  let selectorIndex = 1;
+  let selectorIndex = 3;
 
   try {
     // ====================================================================================
@@ -129,7 +129,9 @@ const search = ( req, res ) => {
           totalEntries: +result.paginationOutput.totalEntries,
           entriesPerPage: +result.paginationOutput.entriesPerPage,
         },
-        searchEbayUrl: result.itemSearchURL
+        searchEbayUrl: result.itemSearchURL,
+        aspectHistogram: undefined,
+        categoryHistogram: undefined,
       };
       let items = [].concat( result.searchResult.item || [] );
       clean.searchResult.items = items.map( item => {
@@ -163,17 +165,21 @@ const search = ( req, res ) => {
             cost: +item.shippingInfo.shippingServiceCost[ '_' ],
             currencyId: item.shippingInfo.shippingServiceCost[ '$' ].currencyId
           },
-          category: item.primaryCategory,
+          category: {
+            id: item.primaryCategory.categoryId,
+            name: item.primaryCategory.categoryName,
+          },
           itemEbayUrl: item.viewItemURL,
         };
 
         if ( item.hasOwnProperty( 'condition' ) ) {
           cleanItem.condition = {
-            conditionId: item.condition.conditionId,
-            conditionName: item.condition.conditionDisplayName
+            id: item.condition.conditionId,
+            name: item.condition.conditionDisplayName
           };
         }
 
+        // Normalize listing type
         if ( item.listingInfo.listingType === 'AdType' || item.listingInfo.listingType === 'Classified' ) {
           cleanItem.listingType = 'Advertisement';
         } else if ( item.listingInfo.listingType === 'Auction' || item.listingInfo.listingType === 'AuctionWithBIN' || item.listingInfo.listingType === 'FixedPrice' ) {
@@ -191,6 +197,45 @@ const search = ( req, res ) => {
         return cleanItem;
       } );
 
+      // Aspect Histogram
+      if ( result.aspectHistogramContainer.aspect !== undefined ) {
+        console.log( 'aspect' );
+        clean.aspectHistogram = [].concat( result.aspectHistogramContainer.aspect ).map( aspect => {
+          let values = [].concat( aspect.valueHistogram ).map( value => {
+            return {
+              name: value[ '$' ][ 'valueName' ],
+              count: +value[ 'count' ],
+            };
+          } );
+          return {
+            aspect: aspect[ '$' ][ 'name' ],
+            values: values,
+          };
+        } );
+      }
+
+      // Category Histogram
+      if ( result.categoryHistogramContainer.categoryHistogram !== undefined ) {
+        clean.categoryHistogram = [].concat( result.categoryHistogramContainer.categoryHistogram ).map( category => {
+          let children = [].concat( category.childCategoryHistogram ).map( child => {
+            return {
+              category: {
+                name: child.categoryName,
+                id: child.categoryId,
+              },
+              count: +child.count,
+            };
+          } );
+          return {
+            category: {
+              name: category.categoryName,
+              id: category.categoryId,
+            },
+            count: +category.count,
+            childCategoryHistogram: children,
+          }
+        } );
+      }
       res.status( 200 ).json( clean );
 
     } ).catch( error => {
