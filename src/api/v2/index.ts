@@ -15,7 +15,8 @@ router.get( '/search', search.search );
 router.get( '/items/:id', items.getItem );
 router.get( '/items/:id/pictures', items.getItemPictures );
 router.get( '/items/:id/description', items.getItemDescription );
-router.get( '/categories', categories.getRootCategories );
+router.get( '/categories/:categoryId/children', categories.getChildCategories );
+router.get( '/categories', categories.getAll );
 router.get( '/categories/:categoryId', categories.getCategory );
 router.get( '/categories/:categoryId/conditions', categories.getCategoryConditions );
 
