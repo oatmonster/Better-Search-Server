@@ -31,6 +31,10 @@ function getChildCategories( req, res ) {
   console.time( 'REQUEST Get children of category ' + req.params.categoryId );
 
   model.getChildren( req.params.categoryId ).then( children => {
+    if ( children === undefined ) {
+      // Category does not exist
+      throw new HttpError( 'Category does not exist', 404 );
+    }
     res.status( 200 ).json( children );
   } ).catch( error => {
     if ( error instanceof HttpError ) {
