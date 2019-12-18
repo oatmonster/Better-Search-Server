@@ -13,6 +13,6 @@ export class HttpError extends Error {
   public status: number;
 
   public toString() {
-    return this.name + ' ' + this.status + ': ' + this.message;
+    return 'ERROR ' + this.name + ' ' + this.status + ': ' + this.message;
   }
 }

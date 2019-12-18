@@ -26,15 +26,11 @@ function getAll( req, res ) {
   } );
 }
 
-function getChildCategories( req, res ) {
+function getChildren( req, res ) {
   console.log( 'REQUEST Get children of category ' + req.params.categoryId );
   console.time( 'REQUEST Get children of category ' + req.params.categoryId );
 
   model.getChildren( req.params.categoryId ).then( children => {
-    if ( children === undefined ) {
-      // Category does not exist
-      throw new HttpError( 'Category does not exist', 404 );
-    }
     res.status( 200 ).json( children );
   } ).catch( error => {
     if ( error instanceof HttpError ) {
@@ -49,14 +45,46 @@ function getChildCategories( req, res ) {
   } );
 }
 
+function getParents( req, res ) {
+  console.log( 'REQUEST Get category ' + req.params.categoryId + ' parents' );
+  console.time( 'REQUEST Get category ' + req.params.categoryId + ' parents' );
+  model.getParents( req.params.categoryId ).then( parents => {
+    res.status( 200 ).json( parents );
+  } ).catch( error => {
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
+  } ).finally( () => {
+    console.timeEnd( 'REQUEST Get category ' + req.params.categoryId + ' parents' );
+  } );
+}
+
+function getSiblings( req, res ) {
+  console.log( 'REQUEST Get category ' + req.params.categoryId + ' siblings' );
+  console.time( 'REQUEST Get category ' + req.params.categoryId + ' siblings' );
+  model.getSiblings( req.params.categoryId ).then( siblings => {
+    res.status( 200 ).json( siblings );
+  } ).catch( error => {
+    if ( error instanceof HttpError ) {
+      console.error( error.toString() );
+      res.sendStatus( error.status );
+    } else {
+      console.error( error );
+      res.sendStatus( 500 );
+    }
+  } ).finally( () => {
+    console.timeEnd( 'REQUEST Get category ' + req.params.categoryId + ' siblings' );
+  } );
+}
+
 function getCategory( req, res ) {
   console.log( 'REQUEST Get category ' + req.params.categoryId );
   console.time( 'REQUEST Get category ' + req.params.categoryId );
   model.getCategory( req.params.categoryId ).then( category => {
-    if ( category === undefined ) {
-      // Category does not exist
-      throw new HttpError( 'Category does not exist', 404 );
-    }
     res.status( 200 ).json( category );
   } ).catch( error => {
     if ( error instanceof HttpError ) {
@@ -100,10 +128,7 @@ function getCategoryConditions( req, res ) {
     body: body,
   };
   model.getCategory( req.params.categoryId ).then( category => {
-    if ( category === undefined ) {
-      // Category does not exist
-      throw new HttpError( 'Category does not exist', 404 );
-    }
+    // Check if the category exists
     return request( options );
   } ).then( response => {
     return parser( response );
@@ -138,4 +163,4 @@ function getCategoryConditions( req, res ) {
   } );
 }
 
-export { getAll, getChildCategories, getCategory, getCategoryConditions };
+export { getAll, getChildren, getParents, getSiblings, getCategory, getCategoryConditions };

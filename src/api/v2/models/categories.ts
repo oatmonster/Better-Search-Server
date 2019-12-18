@@ -13,14 +13,14 @@ let categoryTree = new Map<string, ICategory[]>();
 
 function init() {
   return new Promise( ( resolve, reject ) => {
-    console.log( 'INIT retreiving category info' );
-    console.time( 'INIT retreiving category info' );
+    console.log( 'INIT Retreiving category info' );
+    console.time( 'INIT Retreiving category info' );
     update().then( () => {
       resolve();
     } ).catch( error => {
       reject( error );
     } ).finally( () => {
-      console.timeEnd( 'INIT retreiving category info' );
+      console.timeEnd( 'INIT Retreiving category info' );
     } );
   } );
 }
@@ -38,7 +38,46 @@ function getAll(): Promise<any> {
 function getChildren( id: string ): Promise<any> {
   return new Promise( ( resolve, reject ) => {
     update().then( () => {
-      resolve( categoryTree.get( id ) );
+      if ( categoryTree.has( id ) ) {
+        resolve( categoryTree.get( id ) || [] );
+      } else {
+        reject( new HttpError( 'Category does not exist', 404 ) );
+      }
+    } ).catch( error => {
+      reject( error );
+    } );
+  } );
+}
+
+function getSiblings( id: string ): Promise<Array<ICategory>> {
+  return new Promise( ( resolve, reject ) => {
+    update().then( () => {
+      let category = categoryMap.get( id );
+      if ( category !== undefined ) {
+        resolve( categoryTree.get( category.parentId ) || [] );
+      } else {
+        reject( new HttpError( 'Category does not exist', 404 ) );
+      }
+    } ).catch( error => {
+      reject( error );
+    } );
+  } );
+}
+
+function getParents( id: string ): Promise<Array<ICategory>> {
+  return new Promise( ( resolve, reject ) => {
+    update().then( () => {
+      let parents = [];
+      let category = categoryMap.get( id );
+      if ( category !== undefined ) {
+        while ( category.parentId !== '0' ) {
+          category = categoryMap.get( category.parentId );
+          parents.push( category );
+        }
+        resolve( parents );
+      } else {
+        reject( new HttpError( 'Category does not exist', 404 ) );
+      }
     } ).catch( error => {
       reject( error );
     } );
@@ -48,7 +87,9 @@ function getChildren( id: string ): Promise<any> {
 function getCategory( id: string ): Promise<ICategory> {
   return new Promise( ( resolve, reject ) => {
     update().then( () => {
-      resolve( categoryMap.get( id ) );
+      let category = categoryMap.get( id );
+      if ( category !== undefined ) resolve( category );
+      else reject( new HttpError( 'Category does not exist', 404 ) );
     } ).catch( error => {
       reject( error );
     } );
@@ -152,4 +193,4 @@ function update(): Promise<any> {
   } );
 }
 
-export { getAll, getChildren, getCategory, init };
+export { getAll, getChildren, getParents, getSiblings, getCategory, init };
