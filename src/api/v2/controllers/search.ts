@@ -130,7 +130,9 @@ function cleanSearchResponse( dirty ): ISearchResult {
   }
 
   // Category Histogram
-  if ( dirty.categoryHistogramContainer.categoryHistogram !== undefined ) {
+  if ( dirty.categoryHistogramContainer !== undefined
+    && dirty.categoryHistogramContainer.categoryHistogram !== undefined
+  ) {
     clean.categoryHistogram = [].concat( dirty.categoryHistogramContainer.categoryHistogram ).map( category => {
       let children = [].concat( category.childCategoryHistogram ).map( child => {
         return {

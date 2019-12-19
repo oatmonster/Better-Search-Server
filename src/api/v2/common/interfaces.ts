@@ -64,7 +64,7 @@ export interface ISearchResult {
       count: number,
     }[],
   }[],
-  categoryHistogram: {
+  categoryHistogram?: {
     category: ICategory,
     count: number,
     childCategoryHistogram: {

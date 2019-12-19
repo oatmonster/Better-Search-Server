@@ -1,7 +1,6 @@
 // Module dependencies. 
 let { app, init } = require( '../dist/app' );
 let http = require( 'http' );
-let categories = require( '../dist/api/v2/models/categories' );
 
 // Get port from environment and store in Express.
 let port = normalizePort( process.env.PORT || '3000' );

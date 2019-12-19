@@ -38,7 +38,7 @@ function getAll(): Promise<any> {
 function getChildren( id: string ): Promise<any> {
   return new Promise( ( resolve, reject ) => {
     update().then( () => {
-      if ( categoryTree.has( id ) ) {
+      if ( categoryTree.has( id ) || categoryMap.has( id ) ) {
         resolve( categoryTree.get( id ) || [] );
       } else {
         reject( new HttpError( 'Category does not exist', 404 ) );
@@ -72,9 +72,11 @@ function getParents( id: string ): Promise<Array<ICategory>> {
       if ( category !== undefined ) {
         while ( category.parentId !== '0' ) {
           category = categoryMap.get( category.parentId );
-          parents.push( category );
+          parents.unshift( category );
         }
         resolve( parents );
+      } else if ( id === '0' ) {
+        resolve( [] );
       } else {
         reject( new HttpError( 'Category does not exist', 404 ) );
       }
