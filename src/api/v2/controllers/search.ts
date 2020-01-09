@@ -114,7 +114,9 @@ function cleanSearchResponse( dirty ): ISearchResult {
   } );
 
   // Aspect Histogram
-  if ( dirty.aspectHistogramContainer.aspect !== undefined ) {
+  if ( dirty.aspectHistogramContainer !== undefined
+    && dirty.aspectHistogramContainer.aspect !== undefined
+  ) {
     clean.aspectHistogram = [].concat( dirty.aspectHistogramContainer.aspect ).map( aspect => {
       let values = [].concat( aspect.valueHistogram ).map( value => {
         return {
@@ -130,29 +132,31 @@ function cleanSearchResponse( dirty ): ISearchResult {
   }
 
   // Category Histogram
-  if ( dirty.categoryHistogramContainer !== undefined
-    && dirty.categoryHistogramContainer.categoryHistogram !== undefined
-  ) {
-    clean.categoryHistogram = [].concat( dirty.categoryHistogramContainer.categoryHistogram ).map( category => {
-      let children = [].concat( category.childCategoryHistogram ).map( child => {
-        return {
-          category: {
-            name: child.categoryName,
-            id: child.categoryId,
-          },
-          count: +child.count,
-        };
-      } );
+  let histogramArray: Array<any> = [];
+  if ( dirty.categoryHistogram !== undefined ) {
+    histogramArray = [].concat( dirty.categoryHistogram );
+  } else if ( dirty.categoryHistogramContainer !== undefined ) {
+    histogramArray = [].concat( dirty.categoryHistogramContainer.categoryHistogram );
+  }
+  clean.categoryHistogram = histogramArray.map( category => {
+    let children = [].concat( category.childCategoryHistogram ).map( child => {
       return {
         category: {
-          name: category.categoryName,
-          id: category.categoryId,
+          name: child.categoryName,
+          id: child.categoryId,
         },
-        count: +category.count,
-        childCategoryHistogram: children,
-      }
+        count: +child.count,
+      };
     } );
-  }
+    return {
+      category: {
+        name: category.categoryName,
+        id: category.categoryId,
+      },
+      count: +category.count,
+      childCategoryHistogram: children,
+    }
+  } );
 
   return clean;
 }
